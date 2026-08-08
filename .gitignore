@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Node / 前端构建产物
+node_modules/
+dist/
+*.tsbuildinfo
+
+# 环境变量与本地工具
+.env
+.vite/
+
+# 智能体交接私密材料
+HANDOFF_*/PRIVATE_*
