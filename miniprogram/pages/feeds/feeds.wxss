@@ -1,0 +1,246 @@
+/* pages/feeds/feeds.wxss */
+
+.mode-tabs {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 14rpx;
+  padding: 6rpx;
+  margin-bottom: 20rpx;
+}
+
+.mode-tab {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 10rpx;
+  transition: all 0.2s ease;
+}
+
+.mode-tab.active {
+  background: #ffffff;
+  color: #16a34a;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.mode-desc {
+  background: #f8fafc;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 16rpx;
+  border-left: 6rpx solid #16a34a;
+}
+
+.mode-desc-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 6rpx;
+}
+
+.mode-desc-text {
+  font-size: 24rpx;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.selection-summary {
+  font-size: 26rpx;
+  color: #475569;
+  font-weight: 500;
+  padding-top: 8rpx;
+}
+
+.highlight-count {
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 30rpx;
+}
+
+.warning-item {
+  font-size: 24rpx;
+  margin-bottom: 6rpx;
+}
+
+.group-section {
+  margin-bottom: 28rpx;
+}
+
+.group-header {
+  margin-bottom: 16rpx;
+  padding-left: 8rpx;
+}
+
+.group-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #0f172a;
+  display: block;
+}
+
+.group-subtitle {
+  font-size: 24rpx;
+  color: #64748b;
+}
+
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.feed-card {
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  border: 2rpx solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.feed-card-selected {
+  border-color: #86efac;
+  background: #fafffc;
+  box-shadow: 0 4rpx 12rpx rgba(22, 163, 74, 0.06);
+}
+
+.feed-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+}
+
+.feed-check-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.feed-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.feed-name {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.tag-estimate {
+  font-size: 20rpx;
+  color: #94a3b8;
+  background: #f1f5f9;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+}
+
+.feed-status-text {
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+
+.feed-card-selected .feed-status-text {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.feed-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  padding: 16rpx 20rpx;
+  border-radius: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.price-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.price-label {
+  font-size: 26rpx;
+  color: #475569;
+}
+
+.price-input {
+  width: 140rpx;
+  height: 60rpx;
+  background: #ffffff;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 8rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #0f172a;
+}
+
+.limit-info {
+  text-align: right;
+}
+
+.limit-label {
+  font-size: 22rpx;
+  color: #94a3b8;
+  display: block;
+}
+
+.limit-val {
+  font-size: 24rpx;
+  color: #475569;
+  font-weight: 600;
+}
+
+.override-toggle {
+  text-align: center;
+  padding: 10rpx 0;
+  font-size: 24rpx;
+  color: #4f46e5;
+}
+
+.override-box {
+  margin-top: 16rpx;
+  padding: 20rpx;
+  background: #f8fafc;
+  border-radius: 12rpx;
+  border: 1rpx dashed #cbd5e1;
+}
+
+.override-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+.override-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.override-label {
+  font-size: 22rpx;
+  color: #64748b;
+  margin-bottom: 6rpx;
+}
+
+.override-input {
+  height: 60rpx;
+  background: #ffffff;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 8rpx;
+  padding: 0 12rpx;
+  font-size: 26rpx;
+}
+
+.override-hint {
+  font-size: 20rpx;
+  color: #94a3b8;
+  margin-top: 12rpx;
+  display: block;
+}

@@ -1,0 +1,85 @@
+<!-- pages/index/index.wxml -->
+<view class="container">
+  <!-- 顶部步骤条 -->
+  <view class="steps-bar">
+    <view class="step-item active">
+      <view class="step-icon">1</view>
+      <text class="step-text">羊只信息</text>
+    </view>
+    <view class="step-item">
+      <view class="step-icon">2</view>
+      <text class="step-text">原料价格</text>
+    </view>
+    <view class="step-item">
+      <view class="step-icon">3</view>
+      <text class="step-text">配方结果</text>
+    </view>
+  </view>
+
+  <!-- 表单主体卡片 -->
+  <view class="card">
+    <view class="card-title">第一步：填写羊只信息</view>
+    <view class="card-subtitle">按单只羊的实际生理阶段填写，系统自动核算每日基础与生产营养需要。</view>
+
+    <!-- 生理阶段选择 -->
+    <view class="form-group">
+      <text class="form-label">羊只阶段</text>
+      <picker bindchange="onClassChange" value="{{classIndex}}" range="{{classList}}" range-key="label">
+        <view class="form-select">
+          <text>{{classList[classIndex].label}}</text>
+          <text style="color: #94a3b8;">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 体重 -->
+    <view class="form-group">
+      <text class="form-label">体重 (kg)</text>
+      <input 
+        class="form-input" 
+        type="digit" 
+        placeholder="例如 50" 
+        value="{{bodyWeightKg}}" 
+        bindinput="onWeightInput"
+      />
+      <text class="form-hint">适用范围 25 – 90 kg</text>
+    </view>
+
+    <!-- 泌乳期专属字段 -->
+    <block wx:if="{{classList[classIndex].value === 'lactating'}}">
+      <view class="form-group">
+        <text class="form-label">日产奶量 (kg/天)</text>
+        <input 
+          class="form-input" 
+          type="digit" 
+          placeholder="例如 2.5" 
+          value="{{milkKg}}" 
+          bindinput="onMilkInput"
+        />
+        <text class="form-hint">适用范围 0.2 – 5.0 kg/天</text>
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">乳脂率 (%, 可选)</text>
+        <input 
+          class="form-input" 
+          type="digit" 
+          placeholder="留空默认 4.0%" 
+          value="{{milkFatPercent}}" 
+          bindinput="onFatInput"
+        />
+        <text class="form-hint">不填默认 4.0%；适用范围 2.0 – 7.0%</text>
+      </view>
+    </block>
+
+    <!-- 错误提示 -->
+    <view wx:if="{{errorMessage}}" class="alert-box alert-danger" style="margin-top: 20rpx;">
+      {{errorMessage}}
+    </view>
+
+    <!-- 按钮 -->
+    <view class="btn-row">
+      <button class="btn-primary" bindtap="handleNext">下一步：选择原料</button>
+    </view>
+  </view>
+</view>
