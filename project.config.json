@@ -1,8 +1,8 @@
 {
-  "miniprogramRoot": "./",
+  "miniprogramRoot": "miniprogram/",
   "projectname": "dairy-goat-ration-miniprogram",
   "description": "奶山羊日粮精准配比助手微信小程序",
-  "appid": "wxf3db135de6e01d28",
+  "appid": "touristappid",
   "setting": {
     "urlCheck": false,
     "es6": true,
@@ -39,21 +39,10 @@
     "disableUseStrict": false,
     "minifyWXML": true,
     "showES6CompileOption": false,
-    "useCompilerPlugins": false,
-    "compileWorklet": false,
-    "localPlugins": false,
-    "condition": false,
-    "swc": false,
-    "disableSWC": true
+    "useCompilerPlugins": false
   },
   "compileType": "miniprogram",
   "libVersion": "3.4.0",
-  "srcMiniprogramRoot": "./",
-  "condition": {},
-  "simulatorPluginLibVersion": {},
-  "packOptions": {
-    "ignore": [],
-    "include": []
-  },
-  "editorSetting": {}
+  "srcMiniprogramRoot": "miniprogram/",
+  "condition": {}
 }

@@ -17,20 +17,39 @@ Page({
   },
 
   runCalculation() {
-    const lastRequest = app.globalData.lastRequest;
+    let lastRequest = app.globalData.lastRequest;
     if (!lastRequest) {
-      this.setData({
-        loading: false,
-        error: '未获取到羊只及原料输入数据，请返回重新选择。'
-      });
-      return;
+      // 容错处理：若开发者工具直接刷新在结果页，自动填充默认羊只与原料数据发起计算
+      const animalForm = app.globalData.animalForm || {
+        class: 'lactating',
+        bodyWeightKg: '50',
+        milkKg: '2.5',
+        milkFatPercent: '4.0'
+      };
+      lastRequest = {
+        animal: {
+          class: animalForm.class,
+          body_weight_kg: parseFloat(animalForm.bodyWeightKg) || 50,
+          milk_kg: animalForm.milkKg ? parseFloat(animalForm.milkKg) : 2.5,
+          milk_fat_percent: animalForm.milkFatPercent ? parseFloat(animalForm.milkFatPercent) : 4.0
+        },
+        feeds: [
+          { feed_id: 'corn', owned: true, price_rmb_per_kg: 2.4 },
+          { feed_id: 'wheat_bran', owned: true, price_rmb_per_kg: 1.8 },
+          { feed_id: 'soybean_meal', owned: true, price_rmb_per_kg: 4.2 },
+          { feed_id: 'alfalfa_hay', owned: true, price_rmb_per_kg: 2.2 },
+          { feed_id: 'corn_silage', owned: true, price_rmb_per_kg: 0.5 },
+          { feed_id: 'salt', owned: true, price_rmb_per_kg: 1.0 },
+          { feed_id: 'limestone', owned: true, price_rmb_per_kg: 0.6 }
+        ]
+      };
+      app.globalData.lastRequest = lastRequest;
     }
 
     this.setData({ loading: true, error: null });
 
     calculateRation(lastRequest)
       .then((res) => {
-        // 格式化数值显示
         this.formatResultData(res);
         this.setData({
           loading: false,
