@@ -1,8 +1,8 @@
 // app.js
 App({
   globalData: {
-    // 微信云托管配置
-    envId: 'prod',
+    // 微信云托管配置（环境真实ID：prod-d1gcd8sm9cea90836）
+    envId: 'prod-d1gcd8sm9cea90836',
     serviceName: 'django-olww',
     // 备用公网 URL（用于本地开发工具开启域名放行时直接请求）
     baseUrl: 'https://django-olww-297810-6-1469616598.sh.run.tcloudbase.com',
@@ -26,10 +26,10 @@ App({
     } else {
       try {
         wx.cloud.init({
-          env: 'prod',
+          env: 'prod-d1gcd8sm9cea90836',
           traceUser: true
         });
-        console.log('微信云托管初始化成功，环境：prod');
+        console.log('微信云托管初始化成功，环境ID：prod-d1gcd8sm9cea90836');
       } catch (err) {
         console.warn('wx.cloud.init 提示：', err);
       }

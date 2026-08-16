@@ -9,6 +9,22 @@ const GROUP_META = [
   { category: 'mineral', title: '矿物质', description: '补充食盐、钙磷等微量元素' }
 ];
 
+const DEFAULT_CATALOG = [
+  { feed_id: "corn", name: "玉米", category: "concentrate", dm_pct: 86.0, me_mj_per_kg_dm: 14.0, cp_pct_dm: 8.0, ndf_pct_dm: 9.5, ca_pct_dm: 0.02, p_pct_dm: 0.28, default_price_rmb_per_kg: 2.4, max_usage_pct_dm: 35.0, is_estimate: true },
+  { feed_id: "wheat_bran", name: "小麦麸", category: "concentrate", dm_pct: 88.0, me_mj_per_kg_dm: 10.0, cp_pct_dm: 15.0, ndf_pct_dm: 41.0, ca_pct_dm: 0.1, p_pct_dm: 0.92, default_price_rmb_per_kg: 2.2, max_usage_pct_dm: 20.0, is_estimate: true },
+  { feed_id: "soybean_meal", name: "豆粕", category: "concentrate", dm_pct: 89.0, me_mj_per_kg_dm: 14.0, cp_pct_dm: 46.0, ndf_pct_dm: 13.5, ca_pct_dm: 0.32, p_pct_dm: 0.62, default_price_rmb_per_kg: 3.6, max_usage_pct_dm: 20.0, is_estimate: true },
+  { feed_id: "rapeseed_meal", name: "菜籽粕", category: "concentrate", dm_pct: 89.0, me_mj_per_kg_dm: 11.0, cp_pct_dm: 36.0, ndf_pct_dm: 30.0, ca_pct_dm: 0.65, p_pct_dm: 1.02, default_price_rmb_per_kg: 2.8, max_usage_pct_dm: 10.0, is_estimate: true },
+  { feed_id: "peanut_meal", name: "花生粕", category: "concentrate", dm_pct: 90.0, me_mj_per_kg_dm: 13.0, cp_pct_dm: 47.0, ndf_pct_dm: 15.0, ca_pct_dm: 0.22, p_pct_dm: 0.55, default_price_rmb_per_kg: 3.0, max_usage_pct_dm: 10.0, is_estimate: true },
+  { feed_id: "alfalfa_hay", name: "苜蓿干草", category: "forage", dm_pct: 90.0, me_mj_per_kg_dm: 9.5, cp_pct_dm: 17.0, ndf_pct_dm: 42.0, ca_pct_dm: 1.3, p_pct_dm: 0.28, default_price_rmb_per_kg: 2.0, max_usage_pct_dm: 70.0, is_estimate: true },
+  { feed_id: "corn_stover", name: "玉米秸秆", category: "forage", dm_pct: 90.0, me_mj_per_kg_dm: 6.5, cp_pct_dm: 5.5, ndf_pct_dm: 68.0, ca_pct_dm: 0.45, p_pct_dm: 0.08, default_price_rmb_per_kg: 0.5, max_usage_pct_dm: 70.0, is_estimate: true },
+  { feed_id: "peanut_vine", name: "花生秧", category: "forage", dm_pct: 90.0, me_mj_per_kg_dm: 8.3, cp_pct_dm: 10.0, ndf_pct_dm: 52.0, ca_pct_dm: 1.4, p_pct_dm: 0.2, default_price_rmb_per_kg: 0.9, max_usage_pct_dm: 70.0, is_estimate: true },
+  { feed_id: "sheep_grass", name: "羊草", category: "forage", dm_pct: 91.0, me_mj_per_kg_dm: 8.5, cp_pct_dm: 8.0, ndf_pct_dm: 60.0, ca_pct_dm: 0.35, p_pct_dm: 0.18, default_price_rmb_per_kg: 1.5, max_usage_pct_dm: 70.0, is_estimate: true },
+  { feed_id: "oat_hay", name: "燕麦干草", category: "forage", dm_pct: 90.0, me_mj_per_kg_dm: 9.0, cp_pct_dm: 9.0, ndf_pct_dm: 55.0, ca_pct_dm: 0.3, p_pct_dm: 0.25, default_price_rmb_per_kg: 2.0, max_usage_pct_dm: 70.0, is_estimate: true },
+  { feed_id: "corn_silage", name: "全株玉米青贮", category: "forage", dm_pct: 30.0, me_mj_per_kg_dm: 10.6, cp_pct_dm: 7.0, ndf_pct_dm: 48.0, ca_pct_dm: 0.25, p_pct_dm: 0.1, default_price_rmb_per_kg: 0.45, max_usage_pct_dm: 60.0, is_estimate: true },
+  { feed_id: "salt", name: "食盐", category: "mineral", dm_pct: 100.0, me_mj_per_kg_dm: 0.0, cp_pct_dm: 0.0, ndf_pct_dm: 0.0, ca_pct_dm: 0.0, p_pct_dm: 0.0, default_price_rmb_per_kg: 1.0, max_usage_pct_dm: 100.0, is_estimate: false },
+  { feed_id: "limestone", name: "饲料级石灰石粉", category: "mineral", dm_pct: 100.0, me_mj_per_kg_dm: 0.0, cp_pct_dm: 0.0, ndf_pct_dm: 0.0, ca_pct_dm: 38.0, p_pct_dm: 0.0, default_price_rmb_per_kg: 0.4, max_usage_pct_dm: 2.0, is_estimate: true }
+];
+
 Page({
   data: {
     loading: true,
@@ -29,34 +45,32 @@ Page({
     this.setData({ loading: true });
     fetchFeeds()
       .then((res) => {
-        const rawFeeds = res.feeds || [];
-        const initialMode = app.globalData.feedsMode || 'recommended';
-        
-        // 组装每个原料的表单数据
-        const feedsList = rawFeeds.map((item) => ({
-          ...item,
-          owned: initialMode === 'recommended', // 推荐模式下默认全部勾选入池
-          price: String(item.default_price_rmb_per_kg || '0'),
-          override: {}
-        }));
-
-        this.setData({
-          loading: false,
-          catalog: rawFeeds,
-          feedsList: feedsList,
-          mode: initialMode
-        }, () => {
-          this.rebuildGroups();
-        });
+        const rawFeeds = (res && res.feeds && res.feeds.length > 0) ? res.feeds : DEFAULT_CATALOG;
+        this.renderCatalog(rawFeeds);
       })
       .catch((err) => {
-        this.setData({ loading: false });
-        wx.showModal({
-          title: '原料库加载失败',
-          content: err.message || '网络请求超时，请检查云托管服务',
-          showCancel: false
-        });
+        console.warn('拉取云端原料库受限，自动启用本地标准13种原料库:', err);
+        this.renderCatalog(DEFAULT_CATALOG);
       });
+  },
+
+  renderCatalog(rawFeeds) {
+    const initialMode = app.globalData.feedsMode || 'recommended';
+    const feedsList = rawFeeds.map((item) => ({
+      ...item,
+      owned: initialMode === 'recommended',
+      price: String(item.default_price_rmb_per_kg || '0'),
+      override: {}
+    }));
+
+    this.setData({
+      loading: false,
+      catalog: rawFeeds,
+      feedsList: feedsList,
+      mode: initialMode
+    }, () => {
+      this.rebuildGroups();
+    });
   },
 
   switchMode(e) {

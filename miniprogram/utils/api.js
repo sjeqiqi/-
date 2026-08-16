@@ -1,58 +1,55 @@
 // miniprogram/utils/api.js
 
-const ENV_ID = 'prod';
+const ENV_ID = 'prod-d1gcd8sm9cea90836';
 const SERVICE_NAME = 'django-olww';
 const BASE_URL = 'https://django-olww-297810-6-1469616598.sh.run.tcloudbase.com';
 
 /**
  * 统一网络请求封装
- * 优先使用标准 HTTPS 请求已部署的云托管服务，并在特定需要时回退至微信云原生调用
+ * 优先使用微信原生云托管调用（免域名、免备案，真机和体验版完全放行）
+ * 若不在微信云环境或开发调试时，自动回退到标准 HTTPS
  */
 export function request(path, method = 'GET', data = null) {
   return new Promise((resolve, reject) => {
-    // 优先使用标准 HTTP/HTTPS 请求
-    wx.request({
-      url: `${BASE_URL}${path}`,
-      method: method,
-      data: data,
-      header: {
-        'content-type': 'application/json'
-      },
-      success: (res) => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(res.data);
-        } else if (res.statusCode === 404 && wx.cloud && typeof wx.cloud.callContainer === 'function') {
-          // 若 HTTP 404 尝试云调用
-          tryCallContainer(path, method, data, resolve, reject);
-        } else {
-          const msg = (res.data && res.data.detail && (res.data.detail.message || res.data.detail)) || `请求失败 (${res.statusCode})`;
-          reject(new Error(msg));
+    if (wx.cloud && typeof wx.cloud.callContainer === 'function') {
+      wx.cloud.callContainer({
+        config: {
+          env: ENV_ID,
+        },
+        path: path,
+        header: {
+          'X-WX-SERVICE': SERVICE_NAME,
+          'content-type': 'application/json'
+        },
+        method: method,
+        data: data,
+        success: (res) => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(res.data);
+          } else {
+            // 云调用返回非 200 尝试备用 HTTPS 请求
+            fallbackHttpRequest(path, method, data, resolve, reject, res.statusCode);
+          }
+        },
+        fail: (cloudErr) => {
+          console.warn('wx.cloud.callContainer 失败，尝试备用 HTTPS 请求:', cloudErr);
+          fallbackHttpRequest(path, method, data, resolve, reject);
         }
-      },
-      fail: (err) => {
-        // 若网络失败，尝试微信原生云调用
-        if (wx.cloud && typeof wx.cloud.callContainer === 'function') {
-          tryCallContainer(path, method, data, resolve, reject);
-        } else {
-          reject(new Error(err.errMsg || '网络连接异常，请检查网络设置'));
-        }
-      }
-    });
+      });
+    } else {
+      fallbackHttpRequest(path, method, data, resolve, reject);
+    }
   });
 }
 
-function tryCallContainer(path, method, data, resolve, reject) {
-  wx.cloud.callContainer({
-    config: {
-      env: ENV_ID,
-    },
-    path: path,
-    header: {
-      'X-WX-SERVICE': SERVICE_NAME,
-      'content-type': 'application/json'
-    },
+function fallbackHttpRequest(path, method, data, resolve, reject, cloudStatusCode = null) {
+  wx.request({
+    url: `${BASE_URL}${path}`,
     method: method,
     data: data,
+    header: {
+      'content-type': 'application/json'
+    },
     success: (res) => {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         resolve(res.data);
@@ -61,8 +58,9 @@ function tryCallContainer(path, method, data, resolve, reject) {
         reject(new Error(msg));
       }
     },
-    fail: (cloudErr) => {
-      reject(new Error(cloudErr.errMsg || '云托管通信失败'));
+    fail: (err) => {
+      const codeMsg = cloudStatusCode ? ` (${cloudStatusCode})` : '';
+      reject(new Error(err.errMsg || `网络连接异常${codeMsg}`));
     }
   });
 }
