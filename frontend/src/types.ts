@@ -67,6 +67,7 @@ export interface FeedRow {
 }
 
 export interface Nutrients {
+  total_dm_kg: number;
   dmi_kg: number;
   dmi_pct_of_target: number;
   me_mj: number;
@@ -115,8 +116,42 @@ export interface NutrientStatusItem {
   pass: boolean;
 }
 
+export interface InsightSource {
+  feed_id: string;
+  name: string;
+  contribution: number;
+  share_pct: number;
+}
+
+export interface BoundaryFlag {
+  code: string;
+  label: string;
+  detail: string;
+  metric: string;
+  value: number;
+  limit: number;
+  margin: number;
+  unit: string;
+  margin_pct?: number;
+}
+
+export interface RationInsights {
+  version: string;
+  selected_feed_count: number;
+  used_feed_count: number;
+  total_dm_kg: number;
+  forage_dm_pct: number | null;
+  top_me_sources: InsightSource[];
+  me_sources_all: InsightSource[];
+  top_cp_sources: InsightSource[];
+  cp_sources_all: InsightSource[];
+  boundary_flags: BoundaryFlag[];
+  scope_notice: string;
+}
+
 export interface FeasibleRation {
   status: "feasible";
+  qualified: true;
   feed_rows: FeedRow[];
   totals: { as_fed_kg: number; dm_kg: number; cost_rmb: number };
   nutrients: Nutrients;
@@ -127,6 +162,7 @@ export interface FeasibleRation {
   boundary_statements: string[];
   dmi_target_kg: number;
   rounding: { step_kg: number; revalidated: boolean };
+  ration_insights: RationInsights;
 }
 
 export interface Violation {
@@ -161,6 +197,7 @@ export interface ApproximateRation {
   boundary_statements: string[];
   dmi_target_kg: number;
   rounding: { step_kg: number; revalidated: boolean };
+  ration_insights: RationInsights;
 }
 
 export type RationResult = FeasibleRation | ApproximateRation | InfeasibleRation;

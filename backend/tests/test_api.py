@@ -48,6 +48,19 @@ def test_calculate_normal_feasible():
     assert data["totals"]["cost_rmb"] > 0
     assert data["management_tips"] and data["boundary_statements"]
     assert data["rounding"]["step_kg"] == 0.01
+    insights = data["ration_insights"]
+    assert insights["selected_feed_count"] == 13
+    assert insights["used_feed_count"] >= 1
+    assert insights["top_me_sources"] and insights["top_cp_sources"]
+    assert isinstance(insights["boundary_flags"], list)
+    assert insights["scope_notice"]
+    combined_tips = "".join(data["management_tips"])
+    combined_risks = "".join(data["boundary_statements"])
+    assert "重新计算" in combined_tips
+    assert "不建议直接人工修改" in combined_tips
+    assert "7 天" not in combined_tips and "2–3 次" not in combined_tips
+    assert "不能据此认定为完整、长期、全价日粮" in insights["scope_notice"]
+    assert "不承诺提高产奶量" in combined_risks
 
 
 def test_maintenance_rejects_milk_fields():

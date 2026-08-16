@@ -8,6 +8,9 @@
 """
 from __future__ import annotations
 
+import json
+import logging
+import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -17,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import ai, spec
 from .feeds import load_catalog
+from .insights import build_ration_insights
 from .models import CalculateRequest, CalibrateRequest
 from .optimizer import optimize_ration
 from .service import prepare_request
@@ -30,23 +34,27 @@ app.add_middleware(
 )
 
 _catalog = load_catalog()
+_logger = logging.getLogger(__name__)
 
 MANAGEMENT_TIPS = [
-    "换料或调整配方时，请用 7 天左右逐步过渡，避免突然更换导致消化紊乱。",
-    "建议将日粮分成 2–3 次饲喂，并保证充足、清洁的饮水。",
-    "请持续观察剩料、粪便、体况与产奶量变化；出现异常应及时联系兽医或营养师。",
-    "首版方案仅作当前宏量营养的最低成本参考，请按实际采食量与羊只状态动态调整。",
+    "实际使用前，优先录入本批次原料的检测值后重新计算。",
+    "更换原料或调整日粮时应逐步过渡，避免突然更换；具体过渡周期和饲喂频次应结合养殖条件及专业人员建议确定。",
+    "请持续观察采食、反刍、体况及泌乳表现，出现明显异常时应由兽医或动物营养专业人员评估。",
+    "本结果为当前输入条件和已选原料下的最低成本数学解。若实际采食、原料检测值、价格或羊只生产状态发生变化，请更新对应输入后重新计算，不建议直接人工修改各原料克数。",
 ]
 
 BOUNDARY_STATEMENTS = [
-    "默认成分数据为公开资料估算值，不是实验室检测值；有检测值时请用覆盖功能录入。",
-    "本工具仅覆盖宏量指标（能量、粗蛋白、NDF、钙、磷），不含微量元素与维生素保证，不能替代全价长期日粮。",
-    "粗蛋白为宏量代理指标，不代表可代谢蛋白（MP）精确满足。",
-    "本结果不是兽医诊断或治疗建议，不承诺提高产奶量。",
+    "当前原料营养参数若使用默认值，则属于估算数据；实际原料批次差异可能使贴近约束边界的指标发生变化。有检测值时应优先录入检测值重新计算。",
+    "本结果不是疾病诊断或治疗建议，也不承诺提高产奶量。",
 ]
 
 
-def _management_response(result: dict, requirements: dict) -> dict:
+def _management_response(
+    result: dict,
+    requirements: dict,
+    feeds: dict | None = None,
+    owned_ids: list[str] | None = None,
+) -> dict:
     result["management_tips"] = MANAGEMENT_TIPS
     result["boundary_statements"] = BOUNDARY_STATEMENTS
     result["dmi_target_kg"] = requirements["dmi_target_kg"]
@@ -56,6 +64,14 @@ def _management_response(result: dict, requirements: dict) -> dict:
         "step_kg": spec.ROUND_STEP_KG,
         "revalidated": result.get("status") == "feasible",
     }
+    if result.get("feed_rows") and feeds is not None and owned_ids is not None:
+        result["ration_insights"] = build_ration_insights(
+            feeds,
+            result["feed_rows"],
+            result["nutrient_status"],
+            requirements,
+            owned_ids,
+        )
     return result
 
 
@@ -80,7 +96,24 @@ def _run_calculation(request: CalculateRequest) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
     result = optimize_ration(effective, owned, req)
-    return _management_response(result, req.to_dict())
+    result = _management_response(result, req.to_dict(), effective, owned)
+    audit = {
+        "request_id": uuid.uuid4().hex,
+        "animal": request.animal.model_dump(by_alias=True),
+        "selected_feed_ids": owned,
+        "requirements": req.to_dict(),
+        "final_10g_amounts": {
+            row["feed_id"]: row["as_fed_kg"] for row in result.get("feed_rows", [])
+        },
+        "nutrient_status": result.get("nutrient_status", []),
+        "violations": result.get("violations", []),
+        "boundary_flags": (result.get("ration_insights") or {}).get("boundary_flags", []),
+        "solver_status": result.get("status"),
+        "qualified": result.get("qualified"),
+        "cost_rmb": (result.get("totals") or {}).get("cost_rmb"),
+    }
+    _logger.info("ration_audit %s", json.dumps(audit, ensure_ascii=False))
+    return result
 
 
 @app.post("/api/rations/calculate")

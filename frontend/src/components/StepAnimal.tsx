@@ -30,17 +30,17 @@ export function StepAnimal({ initial, onNext }: Props) {
     const errs: string[] = [];
     const w = Number(form.bodyWeightKg);
     if (!Number.isFinite(w) || w < WEIGHT_MIN || w > WEIGHT_MAX) {
-      errs.push(`体重需在 ${WEIGHT_MIN}–${WEIGHT_MAX} kg 之间`);
+      errs.push(`请输入 ${WEIGHT_MIN}–${WEIGHT_MAX} kg 之间的体重`);
     }
     if (form.class === "lactating") {
       const m = Number(form.milkKg);
       if (!Number.isFinite(m) || m < MILK_MIN || m > MILK_MAX) {
-        errs.push(`日产奶量需在 ${MILK_MIN}–${MILK_MAX} kg/d 之间`);
+        errs.push(`请输入 ${MILK_MIN}–${MILK_MAX} kg 之间的日产奶量`);
       }
       if (form.milkFatPercent.trim() !== "") {
         const fat = Number(form.milkFatPercent);
         if (!Number.isFinite(fat) || fat < FAT_MIN || fat > FAT_MAX) {
-          errs.push(`乳脂率需在 ${FAT_MIN}–${FAT_MAX}% 之间（不填默认为 4%）`);
+          errs.push(`乳脂率请填写 ${FAT_MIN}–${FAT_MAX}% 之间的数值，也可以留空使用 4%`);
         }
       }
     }
@@ -54,11 +54,12 @@ export function StepAnimal({ initial, onNext }: Props) {
   };
 
   return (
-    <section className="card" aria-label="动物信息">
-      <h2>第一步：动物信息</h2>
+    <section className="card animal-card" aria-label="羊只信息">
+      <h2>第一步：填写羊只信息</h2>
+      <p className="section-lead">按一只羊的实际情况填写，系统会据此计算每天需要的营养。</p>
 
       <div className="field">
-        <label htmlFor="animal-class">动物类别</label>
+        <label htmlFor="animal-class">羊只阶段</label>
         <select
           id="animal-class"
           value={form.class}
@@ -127,7 +128,7 @@ export function StepAnimal({ initial, onNext }: Props) {
       )}
 
       <div className="actions">
-        <button className="primary" onClick={handleNext}>下一步：原料与价格</button>
+        <button className="primary" onClick={handleNext}>下一步：选择原料</button>
       </div>
     </section>
   );

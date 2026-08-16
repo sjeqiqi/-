@@ -4,9 +4,14 @@ import type { CalibrateResult, CalculateRequest, FeedCatalogResponse, RationResu
 export const API_BASE = "";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, init);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, init);
+  } catch {
+    throw new Error("暂时无法连接计算服务，请检查网络后再试");
+  }
   if (!res.ok) {
-    let message = `请求失败（HTTP ${res.status}）`;
+    let message = "这次没有计算成功，请稍后再试";
     try {
       const body = await res.json();
       if (body?.detail?.message) message = body.detail.message;

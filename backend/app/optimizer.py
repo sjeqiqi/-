@@ -42,12 +42,15 @@ def _dm(amount_asfed: float, feed: FeedSpec) -> float:
 
 # ---------------------------------------------------------------- 复算
 
-def evaluate_ration(
+def compute_ration_metrics(
     feeds: dict[str, FeedSpec],
     amounts_asfed: dict[str, float],
-    req: Requirements,
 ) -> dict:
-    """用给定的原物质用量复算全部指标并逐项判定是否达标（含容差）。"""
+    """用最终 10 g 原物质用量与完整原料参数计算未舍入指标。
+
+    该函数只做复算，不做舍入，也不做达标判定；qualified、violations、
+    boundary_flags 都应基于这里的完整精度值，页面格式化值不得回流参与判断。
+    """
     total_asfed = 0.0
     total_dm = 0.0
     cost = 0.0
@@ -75,12 +78,6 @@ def evaluate_ration(
         if fid == "salt":
             salt_dm = dm
 
-    violations: list[dict] = []
-
-    def check(code: str, ok: bool, message: str, severity: float = 1.0):
-        if not ok:
-            violations.append({"code": code, "message": message, "severity": severity})
-
     T = total_dm
     me_density = me / T if T > 0 else 0.0
     cp_pct = cp / T * 100 if T > 0 else 0.0
@@ -89,6 +86,48 @@ def evaluate_ration(
     p_pct = p / T * 100 if T > 0 else 0.0
     forage_pct = forage_dm / T * 100 if T > 0 else 0.0
     ca_p_ratio = (ca / p) if p > 0 else float("inf")
+
+    return {
+        "as_fed_kg": total_asfed,
+        "total_dm_kg": total_dm,
+        "cost_rmb": cost,
+        "me_mj": me,
+        "me_density_mj_per_kg_dm": me_density,
+        "cp_pct_dm": cp_pct,
+        "ndf_pct_dm": ndf_pct,
+        "ca_pct_dm": ca_pct,
+        "p_pct_dm": p_pct,
+        "ca_p_ratio": ca_p_ratio,
+        "forage_pct_dm": forage_pct,
+        "salt_kg": salt_dm,
+    }
+
+
+def evaluate_ration(
+    feeds: dict[str, FeedSpec],
+    amounts_asfed: dict[str, float],
+    req: Requirements,
+) -> dict:
+    """用给定的原物质用量复算全部指标并逐项判定是否达标（含容差）。"""
+    raw = compute_ration_metrics(feeds, amounts_asfed)
+    total_asfed = raw["as_fed_kg"]
+    T = raw["total_dm_kg"]
+    cost = raw["cost_rmb"]
+    me = raw["me_mj"]
+    me_density = raw["me_density_mj_per_kg_dm"]
+    cp_pct = raw["cp_pct_dm"]
+    ndf_pct = raw["ndf_pct_dm"]
+    ca_pct = raw["ca_pct_dm"]
+    p_pct = raw["p_pct_dm"]
+    forage_pct = raw["forage_pct_dm"]
+    ca_p_ratio = raw["ca_p_ratio"]
+    salt_dm = raw["salt_kg"]
+
+    violations: list[dict] = []
+
+    def check(code: str, ok: bool, message: str, severity: float = 1.0):
+        if not ok:
+            violations.append({"code": code, "message": message, "severity": severity})
 
     # DMI 带
     dmi_sev = 0.0
@@ -155,6 +194,7 @@ def evaluate_ration(
             "cost_rmb": round_half_up(cost, 4),
         },
         "nutrients": {
+            "total_dm_kg": round_half_up(T, 3),
             "dmi_kg": round_half_up(T, 3),
             "dmi_pct_of_target": round_half_up(T / req.dmi_target_kg * 100, 1) if req.dmi_target_kg else None,
             "me_mj": round_half_up(me, 3),

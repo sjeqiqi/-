@@ -46,7 +46,7 @@ $env:PYTHONUTF8 = "1"
 .\.venv\Scripts\python -X utf8 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-可选 AI 解读：把仓库根目录的 `.env.example` 复制为 `.env` 填入 `DEEPSEEK_API_KEY`，或启动前在环境变量中设置。密钥只由后端服务器读取。
+可选 AI 解读：后端只从进程环境变量 `DEEPSEEK_API_KEY` 读取，当前不会自动解析 `.env` 文件。启动 uvicorn 前请在 PowerShell 中执行 `$env:DEEPSEEK_API_KEY = "sk-..."`（或使用部署平台的环境变量配置）；不要把真实 Key 写入源码、README、测试或提交记录。
 
 ### 2) 前端（开发模式）
 
@@ -67,7 +67,7 @@ npm run build      # 产出 frontend/dist
 
 ## 测试
 
-后端（54 个用例）：
+后端（75 个用例）：
 
 ```powershell
 cd backend
@@ -75,7 +75,7 @@ $env:PYTHONUTF8 = "1"; $env:PYTHONIOENCODING = "utf-8"
 .\.venv\Scripts\python -X utf8 -m pytest tests/ -q -p no:cacheprovider
 ```
 
-前端（9 个用例）：
+前端（16 个用例）：
 
 ```powershell
 cd frontend

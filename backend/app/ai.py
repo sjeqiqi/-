@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any
 
 import httpx
@@ -26,20 +27,28 @@ MAX_NOTE_LEN = 300
 SYSTEM_PROMPT = (
     "你是奶山羊日粮配比助手的解释模块。你只能基于给定的结构化计算结果，"
     "用通俗中文生成最多 3 条解释和最多 3 条风险提醒，并给出 approved 布尔值与一句校准说明。"
+    "表达要面向普通养殖户：每条先说结论，再用一句话说明原因；尽量用短句，一句话只表达一个重点。"
+    "能用日常说法就不用模型术语；必须使用专业词时，紧接着用括号解释。"
+    "例如把‘约束条件’说成‘需要满足的营养要求’，把‘贴边’说成‘虽然达标，但离上限或下限很近’。"
+    "不要堆砌英文缩写；DMI、ME、CP、NDF 首次出现时应同时写出中文含义。"
     "严禁修改任何克数、需求量、约束或成本；不得虚构营养数据；不得诊断疾病或承诺提高产奶量。"
     "nutrient_status 中 pass=true 的指标已经通过确定性复算，不得将其描述为不足、过量或相关健康风险；"
-    "不得把宏量指标达标表述成完整营养已满足，风险提醒应优先说明默认成分误差、换料、原料品质和持续观察。"
+    "不得把宏量指标达标表述成完整营养已满足。你只负责转写程序事实，不能新增未经固定知识支持的饲养参数。"
+    "禁止给出具体换料天数、每日饲喂次数或手工增减某种原料的克数；禁止建议用户按经验动态、自行或人工修改配方。"
+    "涉及输入变化时，只能建议更新原料检测值、价格、实际采食或生产状态后重新运行优化计算，且明确不建议直接人工修改原料克数。"
+    "ration_insights 中的字段全部由后端确定性计算（主要能量/蛋白来源、粗饲料比例、贴边约束等），"
+    "你只能把这些事实转写成用户看得懂的自然语言，不得修改其中数值、不得虚构新的营养来源或营养结论。"
     "必须只输出一个 JSON 对象，格式为："
     '{"explanations": ["..."], "risks": ["..."], "approved": true, "calibration_note": "..."}。'
 )
 
 FALLBACK_EXPLANATIONS = [
     "AI 解读暂不可用：未配置 DEEPSEEK_API_KEY、接口超时或返回内容无法解析。",
-    "下方的配方由本地确定性优化计算得出，未受 AI 影响，仍按 10 g 取整复算并全部达标。",
+    "页面中的配方特点、来源贡献和边界提醒均由程序确定性计算，未受 AI 影响。",
 ]
 FALLBACK_RISKS = [
-    "默认成分数据为估算值，请以实际检测值复核后再长期使用。",
-    "本方案仅覆盖宏量指标，不含微量元素与维生素保证，不能替代全价长期日粮。",
+    "输入条件发生变化时，请更新对应输入后重新计算，不建议直接人工修改各原料克数。",
+    "AI 未参与本次解读，不会新增饲养参数或改变程序计算结果。",
 ]
 FALLBACK_NOTE = "AI 未参与本次解读，以下为固定本地说明。"
 
@@ -70,6 +79,8 @@ def build_ai_payload(result: dict, requirements: dict) -> dict:
         "nutrients": result.get("nutrients", {}),
         "nutrient_status": result.get("nutrient_status", []),
         "boundary_statements": result.get("boundary_statements", []),
+        "management_tips": result.get("management_tips", []),
+        "ration_insights": result.get("ration_insights", {}),
         "purchased_feeds": result.get("purchased_ids", []),
     }
 
@@ -107,10 +118,26 @@ def _clean_list(items: Any, limit: int) -> list[str]:
     return out
 
 
+UNSAFE_ADVICE_PATTERNS = (
+    re.compile(r"\d+(?:\s*[–—-]\s*\d+)?\s*(?:天|次)(?:饲喂|喂|过渡|换料)?"),
+    re.compile(r"(?:动态|自行|手工|人工)(?:地)?(?:调整|修改)"),
+    re.compile(r"[加减]\s*\d+(?:\.\d+)?\s*(?:g|kg|克|公斤)", re.IGNORECASE),
+)
+
+
+def _ensure_safe_content(items: list[str]) -> None:
+    """拒绝未经固定知识支持的具体饲养参数和手工调方建议。"""
+    for item in items:
+        checked = item.replace("不建议直接人工修改", "").replace("不要直接人工修改", "")
+        if any(pattern.search(checked) for pattern in UNSAFE_ADVICE_PATTERNS):
+            raise ValueError("AI 输出包含不允许的具体饲养参数或手工调方建议")
+
+
 def validate_ai_json(data: dict) -> dict:
     """严格校验 AI 输出结构；任何不合规都抛错，由调用方回退。"""
     explanations = _clean_list(data.get("explanations"), MAX_EXPLANATIONS)
     risks = _clean_list(data.get("risks"), MAX_RISKS)
+    _ensure_safe_content(explanations + risks)
     approved = data.get("approved")
     if not isinstance(approved, bool):
         raise ValueError("approved 必须为布尔值")
