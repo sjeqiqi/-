@@ -15,8 +15,8 @@ from typing import Any
 
 import httpx
 
-DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-DEEPSEEK_MODEL = "deepseek-v4-flash"
+DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 TIMEOUT_SECONDS = 30.0
 MAX_RESPONSE_TOKENS = 2000
 MAX_EXPLANATIONS = 3

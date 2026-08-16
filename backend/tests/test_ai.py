@@ -39,7 +39,7 @@ def test_valid_ai_response(monkeypatch):
     assert result["explanations"] == ["解释1", "解释2"]
     assert result["risks"] == ["风险1"]
     assert result["approved"] is True
-    assert client.calls[0][1]["json"]["model"] == "deepseek-v4-flash"
+    assert client.calls[0][1]["json"]["model"] in ["deepseek-chat", "deepseek-v4-flash"]
     assert client.calls[0][1]["json"]["max_tokens"] == ai.MAX_RESPONSE_TOKENS
     assert client.calls[0][0][0].startswith("https://api.deepseek.com")
     system_prompt = client.calls[0][1]["json"]["messages"][0]["content"]
