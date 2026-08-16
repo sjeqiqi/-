@@ -16,7 +16,7 @@ from typing import Any
 import httpx
 
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
 TIMEOUT_SECONDS = 30.0
 MAX_RESPONSE_TOKENS = 2000
 MAX_EXPLANATIONS = 3
@@ -87,11 +87,14 @@ def build_ai_payload(result: dict, requirements: dict) -> dict:
 
 def _extract_json(content: str) -> dict:
     """解析模型输出中的 JSON（容忍 ```json 代码块与前后杂质）。"""
+    if not isinstance(content, str):
+        raise ValueError("AI 返回内容不是字符串")
     text = content.strip()
+    # 剥离 markdown 代码块包裹
     if text.startswith("```"):
-        text = text.strip("`")
-        if text.lower().startswith("json"):
-            text = text[4:]
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```$", "", text)
+        text = text.strip()
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
@@ -182,9 +185,10 @@ def calibrate_with_ai(
                 "response_format": {"type": "json_object"},
             },
         )
-        if response.status_code >= 400:
-            raise RuntimeError(f"DeepSeek API 返回 HTTP {response.status_code}")
-        content = response.json()["choices"][0]["message"]["content"]
+        msg_obj = response.json()["choices"][0]["message"]
+        content = msg_obj.get("content") or ""
+        if not content.strip() and msg_obj.get("reasoning_content"):
+            content = msg_obj.get("reasoning_content", "")
         validated = validate_ai_json(_extract_json(content))
         return {
             "status": "ok",
