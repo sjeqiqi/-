@@ -20,6 +20,7 @@ Page({
 
   _phaseTimer1: null,
   _phaseTimer2: null,
+  _phaseTimer3: null,
 
   onLoad() {
     this.runCalculation();
@@ -28,6 +29,7 @@ Page({
   onUnload() {
     if (this._phaseTimer1) clearTimeout(this._phaseTimer1);
     if (this._phaseTimer2) clearTimeout(this._phaseTimer2);
+    if (this._phaseTimer3) clearTimeout(this._phaseTimer3);
   },
 
   toggleOtherDetails() {
@@ -64,31 +66,38 @@ Page({
       app.globalData.lastRequest = lastRequest;
     }
 
-    // 初始化 3 秒运算仪式感动效
+    // 初始化 5 秒专业运算仪式感动效
     this.setData({
       loading: true,
       error: null,
       aiResult: null,
-      calcProgress: 20,
+      calcProgress: 18,
       calculatingPhaseText: '正在载入国家饲养标准与营养约束矩阵…'
     });
 
     this._phaseTimer1 = setTimeout(() => {
       this.setData({
-        calcProgress: 60,
-        calculatingPhaseText: '运筹学单纯形法迭代求解：搜索最低饲喂成本组合…'
+        calcProgress: 45,
+        calculatingPhaseText: '运筹学单纯形法迭代求解：多维搜索最低饲喂成本组合…'
       });
-    }, 1000);
+    }, 1200);
 
     this._phaseTimer2 = setTimeout(() => {
       this.setData({
-        calcProgress: 90,
-        calculatingPhaseText: '正在按 10g 精度逐项复核干物质、能量与粗蛋白…'
+        calcProgress: 75,
+        calculatingPhaseText: '正在按 10g 精度逐项复核干物质、代谢能、粗蛋白与钙磷比…'
       });
-    }, 2000);
+    }, 2600);
 
-    // 确保有大约 3 秒钟的专业计算展示节奏（体现严谨运筹学求解）
-    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 3000));
+    this._phaseTimer3 = setTimeout(() => {
+      this.setData({
+        calcProgress: 95,
+        calculatingPhaseText: '全项指标优化收敛达成，正在生成科学配方与达标报告…'
+      });
+    }, 3900);
+
+    // 确保有 5 秒钟的专业深度计算展示节奏（体现严谨运筹学求解）
+    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 5000));
     const calcPromise = calculateRation(lastRequest);
 
     Promise.all([calcPromise, minDelayPromise])

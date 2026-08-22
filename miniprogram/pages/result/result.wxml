@@ -16,7 +16,7 @@
     </view>
   </view>
 
-  <!-- 1. 🚀 运算求解仪式感加载卡片（约 3 秒专业运筹学求解动效） -->
+  <!-- 1. 🚀 运算求解仪式感加载卡片（5 秒专业运筹学求解动效） -->
   <view wx:if="{{loading}}" class="card calc-loading-card">
     <view class="calc-pulse-wrap">
       <view class="calc-center-icon">📐</view>
@@ -32,11 +32,13 @@
 
     <!-- 阶段步骤指示 -->
     <view class="calc-phase-tags">
-      <text class="phase-tag {{calcProgress >= 20 ? 'tag-active' : ''}}">1. 营养约束矩阵</text>
+      <text class="phase-tag {{calcProgress >= 18 ? 'tag-active' : ''}}">1. 营养约束矩阵</text>
       <text class="phase-arrow">→</text>
-      <text class="phase-tag {{calcProgress >= 60 ? 'tag-active' : ''}}">2. 单纯形法迭代</text>
+      <text class="phase-tag {{calcProgress >= 45 ? 'tag-active' : ''}}">2. 单纯形法迭代</text>
       <text class="phase-arrow">→</text>
-      <text class="phase-tag {{calcProgress >= 90 ? 'tag-active' : ''}}">3. 10g精度复核</text>
+      <text class="phase-tag {{calcProgress >= 75 ? 'tag-active' : ''}}">3. 10g精度复核</text>
+      <text class="phase-arrow">→</text>
+      <text class="phase-tag {{calcProgress >= 95 ? 'tag-active' : ''}}">4. 达标报告生成</text>
     </view>
 
     <text class="calc-standard-subtitle">
