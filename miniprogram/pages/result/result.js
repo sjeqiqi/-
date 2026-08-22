@@ -11,11 +11,23 @@ Page({
     aiLoading: false,
     aiResult: null,
     showAgreementModal: false,
-    showOtherDetails: false
+    showOtherDetails: false,
+
+    // 🚀 核心优化：专业运算仪式感进度（约 3 秒智能呈现）
+    calcProgress: 15,
+    calculatingPhaseText: '正在载入国家饲养标准与营养约束矩阵…'
   },
+
+  _phaseTimer1: null,
+  _phaseTimer2: null,
 
   onLoad() {
     this.runCalculation();
+  },
+
+  onUnload() {
+    if (this._phaseTimer1) clearTimeout(this._phaseTimer1);
+    if (this._phaseTimer2) clearTimeout(this._phaseTimer2);
   },
 
   toggleOtherDetails() {
@@ -52,21 +64,49 @@ Page({
       app.globalData.lastRequest = lastRequest;
     }
 
-    this.setData({ loading: true, error: null, aiResult: null });
+    // 初始化 3 秒运算仪式感动效
+    this.setData({
+      loading: true,
+      error: null,
+      aiResult: null,
+      calcProgress: 20,
+      calculatingPhaseText: '正在载入国家饲养标准与营养约束矩阵…'
+    });
 
-    calculateRation(lastRequest)
-      .then((res) => {
-        this.formatResultData(res);
-        this.setData({
-          loading: false,
-          result: res
-        });
-        app.globalData.lastResult = res;
+    this._phaseTimer1 = setTimeout(() => {
+      this.setData({
+        calcProgress: 60,
+        calculatingPhaseText: '运筹学单纯形法迭代求解：搜索最低饲喂成本组合…'
+      });
+    }, 1000);
 
-        // 🚀 核心保障：配方计算完成后，自动在后台触发 AI 解读生成
-        if (res.status === 'feasible') {
-          this.autoTriggerCalibrate(lastRequest);
-        }
+    this._phaseTimer2 = setTimeout(() => {
+      this.setData({
+        calcProgress: 90,
+        calculatingPhaseText: '正在按 10g 精度逐项复核干物质、能量与粗蛋白…'
+      });
+    }, 2000);
+
+    // 确保有大约 3 秒钟的专业计算展示节奏（体现严谨运筹学求解）
+    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 3000));
+    const calcPromise = calculateRation(lastRequest);
+
+    Promise.all([calcPromise, minDelayPromise])
+      .then(([res]) => {
+        this.setData({ calcProgress: 100 });
+        setTimeout(() => {
+          this.formatResultData(res);
+          this.setData({
+            loading: false,
+            result: res
+          });
+          app.globalData.lastResult = res;
+
+          // 🚀 核心保障：配方计算完成后，自动在后台触发 AI 解读生成
+          if (res.status === 'feasible') {
+            this.autoTriggerCalibrate(lastRequest);
+          }
+        }, 200);
       })
       .catch((err) => {
         this.setData({

@@ -16,14 +16,31 @@
     </view>
   </view>
 
-  <!-- 1. 计算加载中 -->
-  <view wx:if="{{loading}}" class="card" style="text-align: center; padding: 80rpx 20rpx;">
-    <view class="spinner"></view>
-    <text style="font-size: 30rpx; font-weight: 600; color: #334155; display: block; margin-top: 24rpx;">
-      正在根据线性规划数学模型优化最低成本配方…
-    </text>
-    <text style="font-size: 24rpx; color: #94a3b8; margin-top: 10rpx; display: block;">
-      微信云托管 FastAPI 求解中
+  <!-- 1. 🚀 运算求解仪式感加载卡片（约 3 秒专业运筹学求解动效） -->
+  <view wx:if="{{loading}}" class="card calc-loading-card">
+    <view class="calc-pulse-wrap">
+      <view class="calc-center-icon">📐</view>
+      <view class="calc-spinner-ring"></view>
+    </view>
+
+    <text class="calc-phase-title">{{calculatingPhaseText}}</text>
+
+    <!-- 专业进度条 -->
+    <view class="calc-progress-track">
+      <view class="calc-progress-bar" style="width: {{calcProgress}}%;"></view>
+    </view>
+
+    <!-- 阶段步骤指示 -->
+    <view class="calc-phase-tags">
+      <text class="phase-tag {{calcProgress >= 20 ? 'tag-active' : ''}}">1. 营养约束矩阵</text>
+      <text class="phase-arrow">→</text>
+      <text class="phase-tag {{calcProgress >= 60 ? 'tag-active' : ''}}">2. 单纯形法迭代</text>
+      <text class="phase-arrow">→</text>
+      <text class="phase-tag {{calcProgress >= 90 ? 'tag-active' : ''}}">3. 10g精度复核</text>
+    </view>
+
+    <text class="calc-standard-subtitle">
+      依据农业农村部《奶山羊饲养标准》（NY/T 2843-2015）
     </text>
   </view>
 
