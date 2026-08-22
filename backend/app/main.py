@@ -58,6 +58,7 @@ def _management_response(
     result["management_tips"] = MANAGEMENT_TIPS
     result["boundary_statements"] = BOUNDARY_STATEMENTS
     result["dmi_target_kg"] = requirements["dmi_target_kg"]
+    result["requirements"] = requirements
     # revalidated 仅对合格（feasible）结果标记为 True；近似配比虽按显示用量
     # 复算并报告未达标项，但不能宣称“复核通过”。
     result["rounding"] = {
@@ -123,13 +124,18 @@ def calculate(request: CalculateRequest) -> dict:
 
 @app.post("/api/rations/calibrate")
 def calibrate(request: CalibrateRequest) -> dict:
-    result = _run_calculation(request)
+    try:
+        req, effective, owned = prepare_request(_catalog, request)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    result = optimize_ration(effective, owned, req)
+    result = _management_response(result, req.to_dict(), effective, owned)
     if result["status"] != "feasible":
         raise HTTPException(
             status_code=422,
             detail={"message": "当前输入不可行或只能给出近似配比，无法生成 AI 校准解读。", "result": result},
         )
-    payload = ai.build_ai_payload(result, result["requirements"])
+    payload = ai.build_ai_payload(result, req.to_dict())
     return ai.calibrate_with_ai(payload)
 
 
