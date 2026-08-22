@@ -8,8 +8,9 @@ Page({
     loading: true,
     error: null,
     result: null,
-    calibrating: false,
-    aiResult: null
+    aiLoading: false,
+    aiResult: null,
+    showAgreementModal: false
   },
 
   onLoad() {
@@ -46,7 +47,7 @@ Page({
       app.globalData.lastRequest = lastRequest;
     }
 
-    this.setData({ loading: true, error: null });
+    this.setData({ loading: true, error: null, aiResult: null });
 
     calculateRation(lastRequest)
       .then((res) => {
@@ -56,12 +57,53 @@ Page({
           result: res
         });
         app.globalData.lastResult = res;
+
+        // 🚀 核心优化：计算完成后，自动静默触发 AI 通俗解读生成（无需用户手动点击）
+        if (res.status === 'feasible') {
+          this.autoTriggerCalibrate(lastRequest);
+        }
       })
       .catch((err) => {
         this.setData({
           loading: false,
           error: err.message || '计算失败，请检查网络或后端服务状态。'
         });
+      });
+  },
+
+  autoTriggerCalibrate(lastRequest) {
+    this.setData({ aiLoading: true });
+    calibrateRation(lastRequest)
+      .then((aiRes) => {
+        this.setData({
+          aiLoading: false,
+          aiResult: aiRes
+        });
+      })
+      .catch((err) => {
+        console.warn('AI 自动解读生成遇到短暂延迟:', err);
+        this.setData({ aiLoading: false });
+      });
+  },
+
+  handleManualCalibrate() {
+    const lastRequest = app.globalData.lastRequest;
+    if (!lastRequest) return;
+
+    this.setData({ aiLoading: true });
+    wx.showToast({ title: '正在重新生成...', icon: 'loading', duration: 1500 });
+
+    calibrateRation(lastRequest)
+      .then((aiRes) => {
+        this.setData({
+          aiLoading: false,
+          aiResult: aiRes
+        });
+        wx.showToast({ title: 'AI 解读已更新', icon: 'success' });
+      })
+      .catch((err) => {
+        this.setData({ aiLoading: false });
+        wx.showToast({ title: '大模型繁忙，请稍后重试', icon: 'none' });
       });
   },
 
@@ -101,41 +143,16 @@ Page({
     }
   },
 
-  handleCalibrate() {
-    const lastRequest = app.globalData.lastRequest;
-    if (!lastRequest) return;
+  openAgreementModal() {
+    this.setData({ showAgreementModal: true });
+  },
 
-    this.setData({ calibrating: true });
-    wx.showLoading({ title: 'AI 正在分析配方...', mask: true });
+  closeAgreementModal() {
+    this.setData({ showAgreementModal: false });
+  },
 
-    calibrateRation(lastRequest)
-      .then((aiRes) => {
-        wx.hideLoading();
-        this.setData({
-          calibrating: false,
-          aiResult: aiRes
-        });
-        if (aiRes.ai_unavailable) {
-          wx.showToast({ title: '已启用本地安全解读', icon: 'none', duration: 2500 });
-        } else {
-          wx.showToast({ title: 'AI 解读已生成', icon: 'success' });
-        }
-      })
-      .catch((err) => {
-        wx.hideLoading();
-        this.setData({ calibrating: false });
-        wx.showModal({
-          title: 'AI 响应稍慢',
-          content: '大模型当前计算繁忙或网络稍有延迟。科学配方结果依然有效，您可以点击重试。',
-          confirmText: '重新生成',
-          cancelText: '我知道了',
-          success: (mRes) => {
-            if (mRes.confirm) {
-              this.handleCalibrate();
-            }
-          }
-        });
-      });
+  stopPropagation() {
+    // 阻止冒泡
   },
 
   handleBack() {
