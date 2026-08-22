@@ -4,9 +4,9 @@ import { fetchFeeds } from '../../utils/api.js';
 const app = getApp();
 
 const GROUP_META = [
-  { category: 'concentrate', title: '精料', description: '主要补充能量和蛋白' },
-  { category: 'forage', title: '粗饲料', description: '构成日粮基础，帮助维持瘤胃健康与反刍' },
-  { category: 'mineral', title: '矿物质', description: '补充食盐、钙磷等微量元素' }
+  { category: 'concentrate', title: '🌾 精料补充料', description: '主要补充能量和蛋白' },
+  { category: 'forage', title: '🌿 粗饲料与青贮', description: '构成日粮基础，维持瘤胃健康与反刍' },
+  { category: 'mineral', title: '🧂 矿物质与盐', description: '补充食盐、钙磷等矿物元素' }
 ];
 
 const DEFAULT_CATALOG = [
@@ -25,6 +25,8 @@ const DEFAULT_CATALOG = [
   { feed_id: "limestone", name: "饲料级石灰石粉", category: "mineral", dm_pct: 100.0, me_mj_per_kg_dm: 0.0, cp_pct_dm: 0.0, ndf_pct_dm: 0.0, ca_pct_dm: 38.0, p_pct_dm: 0.0, default_price_rmb_per_kg: 0.4, max_usage_pct_dm: 2.0, is_estimate: true }
 ];
 
+const ESSENTIAL_FEED_IDS = ['corn', 'wheat_bran', 'soybean_meal', 'alfalfa_hay', 'corn_silage', 'salt', 'limestone'];
+
 Page({
   data: {
     loading: false,
@@ -40,7 +42,6 @@ Page({
   onLoad() {
     // 🚀 核心优化：先立即秒开渲染本地标准原料库（0毫秒秒开，彻底消除卡顿等待）
     this.renderCatalog(DEFAULT_CATALOG);
-    // 后台静默同步拉取云端是否有最新原料
     this.syncCloudFeeds();
   },
 
@@ -48,12 +49,10 @@ Page({
     fetchFeeds()
       .then((res) => {
         if (res && res.feeds && res.feeds.length > 0) {
-          // 如果用户尚未输入自定义数据，可同步云端最新数据
           console.log('云端原料库已同步完成');
         }
       })
       .catch((err) => {
-        // 静默处理，不打扰用户正常使用
         console.log('使用本地标准原料库运行:', err);
       });
   },
@@ -83,6 +82,27 @@ Page({
     
     app.globalData.feedsMode = newMode;
     this.setData({ mode: newMode });
+  },
+
+  selectAllFeeds() {
+    const feedsList = this.data.feedsList.map(item => ({ ...item, owned: true }));
+    this.setData({ feedsList }, () => this.rebuildGroups());
+    wx.showToast({ title: '已全选 13 种推荐原料', icon: 'none' });
+  },
+
+  selectEssentialFeeds() {
+    const feedsList = this.data.feedsList.map(item => ({
+      ...item,
+      owned: ESSENTIAL_FEED_IDS.includes(item.feed_id)
+    }));
+    this.setData({ feedsList }, () => this.rebuildGroups());
+    wx.showToast({ title: '已精选 7 种常用原料', icon: 'none' });
+  },
+
+  clearAllFeeds() {
+    const feedsList = this.data.feedsList.map(item => ({ ...item, owned: false }));
+    this.setData({ feedsList }, () => this.rebuildGroups());
+    wx.showToast({ title: '已清空所选原料', icon: 'none' });
   },
 
   toggleOwned(e) {

@@ -1,1 +1,56 @@
 /* pages/index/index.wxss */
+
+.class-segmented-bar {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 16rpx;
+  padding: 8rpx;
+  gap: 10rpx;
+}
+
+.class-seg-item {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 10rpx;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 12rpx;
+  transition: all 0.25s ease;
+}
+
+.class-seg-item.active {
+  background: #ffffff;
+  color: #059669;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.quick-chips {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 14rpx;
+  flex-wrap: wrap;
+}
+
+.quick-chip-label {
+  font-size: 22rpx;
+  color: #94a3b8;
+}
+
+.chip-item {
+  font-size: 22rpx;
+  color: #475569;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 10rpx;
+  padding: 6rpx 16rpx;
+  transition: all 0.2s ease;
+}
+
+.chip-active {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+  font-weight: 600;
+}

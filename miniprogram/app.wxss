@@ -1,9 +1,9 @@
 /** miniprogram/app.wxss **/
 
 page {
-  background-color: #f8fafc;
+  background-color: #f1f5f9;
   color: #1e293b;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
   font-size: 28rpx;
   line-height: 1.5;
   box-sizing: border-box;
@@ -21,9 +21,9 @@ page {
   display: flex;
   background: #ffffff;
   padding: 24rpx 16rpx;
-  border-radius: 20rpx;
+  border-radius: 24rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.04);
   border: 1rpx solid #e2e8f0;
 }
 
@@ -49,12 +49,12 @@ page {
 
 .step-item.active:not(:last-child)::after,
 .step-item.completed:not(:last-child)::after {
-  background: #16a34a;
+  background: #10b981;
 }
 
 .step-icon {
-  width: 56rpx;
-  height: 56rpx;
+  width: 58rpx;
+  height: 58rpx;
   border-radius: 50%;
   background: #f1f5f9;
   color: #64748b;
@@ -62,21 +62,24 @@ page {
   align-items: center;
   justify-content: center;
   font-size: 26rpx;
-  font-weight: 600;
+  font-weight: 700;
   position: relative;
   z-index: 2;
   margin-bottom: 10rpx;
+  transition: all 0.3s ease;
 }
 
 .step-item.active .step-icon {
-  background: #16a34a;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #ffffff;
-  box-shadow: 0 4rpx 12rpx rgba(22, 163, 74, 0.3);
+  box-shadow: 0 6rpx 16rpx rgba(16, 185, 129, 0.35);
+  transform: scale(1.05);
 }
 
 .step-item.completed .step-icon {
-  background: #dcfce7;
-  color: #166534;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1rpx solid #a7f3d0;
 }
 
 .step-text {
@@ -86,22 +89,22 @@ page {
 }
 
 .step-item.active .step-text {
-  color: #16a34a;
-  font-weight: 600;
+  color: #059669;
+  font-weight: 700;
 }
 
 /* 卡片基础样式 */
 .card {
   background: #ffffff;
-  border-radius: 20rpx;
+  border-radius: 24rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
   border: 1rpx solid #e2e8f0;
-  box-shadow: 0 4rpx 12rpx rgba(15, 23, 42, 0.04);
+  box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.04);
 }
 
 .card-title {
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: 700;
   color: #0f172a;
   margin-bottom: 8rpx;
@@ -111,9 +114,10 @@ page {
 }
 
 .card-subtitle {
-  font-size: 26rpx;
+  font-size: 25rpx;
   color: #64748b;
   margin-bottom: 24rpx;
+  line-height: 1.4;
 }
 
 /* 表单组 */
@@ -131,18 +135,19 @@ page {
 
 .form-input {
   width: 100%;
-  height: 84rpx;
+  height: 88rpx;
   border: 2rpx solid #cbd5e1;
-  border-radius: 14rpx;
+  border-radius: 16rpx;
   padding: 0 24rpx;
   font-size: 30rpx;
   color: #0f172a;
   background: #ffffff;
   box-sizing: border-box;
+  transition: border-color 0.2s ease;
 }
 
 .form-input:focus {
-  border-color: #16a34a;
+  border-color: #10b981;
 }
 
 .form-hint {
@@ -154,9 +159,9 @@ page {
 
 .form-select {
   width: 100%;
-  height: 84rpx;
+  height: 88rpx;
   border: 2rpx solid #cbd5e1;
-  border-radius: 14rpx;
+  border-radius: 16rpx;
   padding: 0 24rpx;
   font-size: 30rpx;
   color: #0f172a;
@@ -177,81 +182,75 @@ page {
 
 .btn-primary {
   flex: 1;
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #ffffff;
   font-size: 32rpx;
   font-weight: 600;
-  height: 92rpx;
-  line-height: 92rpx;
-  border-radius: 16rpx;
+  height: 94rpx;
+  line-height: 94rpx;
+  border-radius: 20rpx;
   text-align: center;
   border: none;
-  box-shadow: 0 6rpx 16rpx rgba(22, 163, 74, 0.25);
+  box-shadow: 0 8rpx 20rpx rgba(5, 150, 105, 0.28);
+  transition: all 0.2s ease;
 }
 
 .btn-primary:active {
-  opacity: 0.9;
-  transform: scale(0.99);
+  opacity: 0.92;
+  transform: scale(0.98);
 }
 
 .btn-secondary {
   flex: 1;
-  background: #f1f5f9;
+  background: #f8fafc;
   color: #475569;
   font-size: 30rpx;
   font-weight: 600;
-  height: 92rpx;
-  line-height: 92rpx;
-  border-radius: 16rpx;
+  height: 94rpx;
+  line-height: 94rpx;
+  border-radius: 20rpx;
   text-align: center;
-  border: 1rpx solid #cbd5e1;
+  border: 2rpx solid #cbd5e1;
 }
 
 .btn-secondary:active {
-  background: #e2e8f0;
-}
-
-.btn-ai {
-  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
-  color: #ffffff;
-  font-size: 28rpx;
-  font-weight: 600;
-  padding: 16rpx 28rpx;
-  border-radius: 12rpx;
-  border: none;
+  background: #f1f5f9;
 }
 
 /* 提示与状态标签 */
 .badge-green {
-  background: #dcfce7;
-  color: #15803d;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1rpx solid #a7f3d0;
   font-size: 22rpx;
   padding: 6rpx 14rpx;
-  border-radius: 8rpx;
+  border-radius: 10rpx;
   font-weight: 600;
 }
 
 .badge-yellow {
   background: #fef3c7;
   color: #b45309;
+  border: 1rpx solid #fde68a;
   font-size: 22rpx;
   padding: 6rpx 14rpx;
-  border-radius: 8rpx;
+  border-radius: 10rpx;
   font-weight: 600;
 }
 
 .badge-red {
   background: #fee2e2;
   color: #b91c1c;
+  border: 1rpx solid #fecaca;
   font-size: 22rpx;
   padding: 6rpx 14rpx;
-  border-radius: 8rpx;
+  border-radius: 10rpx;
   font-weight: 600;
 }
 
 .alert-box {
-  padding: 20rpx 24rpx;
-  border-radius: 14rpx;
+  padding: 22rpx 26rpx;
+  border-radius: 16rpx;
   margin-bottom: 24rpx;
   font-size: 26rpx;
   line-height: 1.5;
@@ -270,7 +269,7 @@ page {
 }
 
 .alert-box.alert-success {
-  background: #f0fdf4;
-  border: 1rpx solid #bbf7d0;
-  color: #166534;
+  background: #ecfdf5;
+  border: 1rpx solid #a7f3d0;
+  color: #059669;
 }

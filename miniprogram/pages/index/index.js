@@ -27,11 +27,22 @@ Page({
     }
   },
 
-  onClassChange(e) {
+  selectClass(e) {
+    const idx = Number(e.currentTarget.dataset.index);
     this.setData({
-      classIndex: Number(e.detail.value),
+      classIndex: idx,
       errorMessage: ''
     });
+  },
+
+  quickSetWeight(e) {
+    const val = e.currentTarget.dataset.val;
+    this.setData({ bodyWeightKg: val, errorMessage: '' });
+  },
+
+  quickSetMilk(e) {
+    const val = e.currentTarget.dataset.val;
+    this.setData({ milkKg: val, errorMessage: '' });
   },
 
   onWeightInput(e) {

@@ -1,5 +1,5 @@
 <!-- pages/feeds/feeds.wxml -->
-<view class="container">
+<view class="container feeds-container">
   <!-- 顶部步骤条 -->
   <view class="steps-bar">
     <view class="step-item completed">
@@ -16,7 +16,7 @@
     </view>
   </view>
 
-  <!-- 模式切换 -->
+  <!-- 模式切换与快捷控制卡片 -->
   <view class="card" style="padding: 24rpx;">
     <view class="mode-tabs">
       <view 
@@ -24,77 +24,83 @@
         bindtap="switchMode" 
         data-mode="recommended"
       >
-        推荐模式
+        ✨ 智能推荐池
       </view>
       <view 
         class="mode-tab {{mode === 'manual' ? 'active' : ''}}" 
         bindtap="switchMode" 
         data-mode="manual"
       >
-        自选模式
+        ✏️ 自由自选模式
       </view>
     </view>
 
-    <!-- 模式说明 -->
+    <!-- 模式说明与快捷批量操作 -->
     <view class="mode-desc">
       <block wx:if="{{mode === 'recommended'}}">
-        <text class="mode-desc-title">💡 推荐原料池（适合大部分养殖户）</text>
-        <text class="mode-desc-text">系统已预选常用原料。勾选表示“允许使用”，具体用量和最终选用哪些由算法按最低成本自动优化。</text>
+        <text class="mode-desc-title">💡 智能推荐原料池（推荐养殖户使用）</text>
+        <text class="mode-desc-text">已预选常用原料。勾选表示“允许系统使用”，具体用量和最终选用哪些由算法按最低成本自动优化。</text>
       </block>
       <block wx:else>
-        <text class="mode-desc-title">✏️ 自选模式（自定义原料）</text>
+        <text class="mode-desc-title">✏️ 自选模式（自定义原料组合）</text>
         <text class="mode-desc-text">完全尊重您的勾选，未勾选原料绝不会自动加入。若原料过少无法配齐，系统将提供近似配比与缺口清单。</text>
       </block>
     </view>
 
-    <!-- 勾选统计与预警提示 -->
-    <view class="selection-summary">
-      <text>已勾选 <text class="highlight-count">{{selectedCount}}</text> 种候选原料</text>
+    <!-- 快捷操作按钮行 -->
+    <view class="quick-batch-bar">
+      <view class="quick-batch-btn" bindtap="selectAllFeeds">全选推荐组合</view>
+      <view class="quick-batch-btn" bindtap="selectEssentialFeeds">精选常用 (7种)</view>
+      <view class="quick-batch-btn quick-batch-clear" bindtap="clearAllFeeds">清空</view>
     </view>
 
+    <!-- 智能预警提示（若有） -->
     <block wx:if="{{warnings.length > 0}}">
-      <view class="alert-box alert-warning" style="margin-top: 16rpx; margin-bottom: 0;">
+      <view class="alert-box alert-warning" style="margin-top: 18rpx; margin-bottom: 0;">
         <view wx:for="{{warnings}}" wx:key="*this" class="warning-item">• {{item}}</view>
       </view>
     </block>
   </view>
 
-  <!-- 加载状态 -->
-  <view wx:if="{{loading}}" class="card" style="text-align: center; padding: 60rpx 0;">
-    <text style="color: #64748b;">正在加载原料库与营养参数…</text>
-  </view>
-
   <!-- 原料列表按分类展示 -->
-  <block wx:if="{{!loading}}">
-    <view wx:for="{{feedGroups}}" wx:key="category" class="group-section">
-      <view class="group-header">
+  <view wx:for="{{feedGroups}}" wx:key="category" class="group-section">
+    <view class="group-header">
+      <view class="group-title-row">
         <text class="group-title">{{item.title}}</text>
-        <text class="group-subtitle">{{item.description}}</text>
+        <text class="group-count-badge">{{item.feeds.length}} 种</text>
       </view>
+      <text class="group-subtitle">{{item.description}}</text>
+    </view>
 
-      <view class="feed-list">
-        <view 
-          wx:for="{{item.feeds}}" 
-          wx:for-item="feed" 
-          wx:key="feed_id" 
-          class="feed-card {{feed.owned ? 'feed-card-selected' : ''}}"
-        >
-          <!-- 头部：勾选与名称 -->
-          <view class="feed-card-top" bindtap="toggleOwned" data-id="{{feed.feed_id}}">
-            <view class="feed-check-wrap">
-              <checkbox checked="{{feed.owned}}" color="#16a34a" />
-              <view class="feed-name-wrap">
-                <text class="feed-name">{{feed.name}}</text>
-                <text wx:if="{{feed.is_estimate}}" class="tag-estimate">估算值</text>
-              </view>
+    <view class="feed-list">
+      <view 
+        wx:for="{{item.feeds}}" 
+        wx:for-item="feed" 
+        wx:key="feed_id" 
+        class="feed-card {{feed.owned ? 'feed-card-selected' : ''}}"
+      >
+        <!-- 头部：勾选与名称 -->
+        <view class="feed-card-top" bindtap="toggleOwned" data-id="{{feed.feed_id}}">
+          <view class="feed-check-wrap">
+            <view class="custom-checkbox {{feed.owned ? 'checked' : ''}}">
+              <text wx:if="{{feed.owned}}" class="check-icon">✓</text>
             </view>
-            <text class="feed-status-text">{{feed.owned ? '已选择' : '未选'}}</text>
+            <view class="feed-name-wrap">
+              <text class="feed-name">{{feed.name}}</text>
+              <text wx:if="{{feed.is_estimate}}" class="tag-estimate">国家库估算</text>
+            </view>
           </view>
+          <text class="feed-status-pill {{feed.owned ? 'pill-selected' : ''}}">
+            {{feed.owned ? '已选用' : '未选'}}
+          </text>
+        </view>
 
-          <!-- 价格与限制 -->
-          <view class="feed-card-body">
-            <view class="price-input-wrap">
-              <text class="price-label">当地价格 (元/kg):</text>
+        <!-- 价格与限制 -->
+        <view class="feed-card-body">
+          <view class="price-input-wrap">
+            <text class="price-label">当地价格:</text>
+            <view class="price-field">
+              <text class="currency-symbol">¥</text>
               <input 
                 class="price-input" 
                 type="digit" 
@@ -102,104 +108,116 @@
                 bindinput="onPriceInput" 
                 data-id="{{feed.feed_id}}"
               />
-            </view>
-            <view class="limit-info">
-              <text class="limit-label">建议最高占比:</text>
-              <text class="limit-val">{{feed.max_usage_pct_dm}}% DM</text>
+              <text class="unit-label">/kg</text>
             </view>
           </view>
+          <view class="limit-info">
+            <text class="limit-label">建议上限</text>
+            <text class="limit-val">{{feed.max_usage_pct_dm}}% DM</text>
+          </view>
+        </view>
 
-          <!-- 展开填写检测值按钮 -->
-          <view class="override-toggle" bindtap="toggleExpand" data-id="{{feed.feed_id}}">
-            <text>{{expandedId === feed.feed_id ? '▲ 收起营养检测值' : '▼ 有检测报告？填写实测值'}}</text>
-          </view>
+        <!-- 展开填写检测值按钮 -->
+        <view class="override-toggle" bindtap="toggleExpand" data-id="{{feed.feed_id}}">
+          <text>{{expandedId === feed.feed_id ? '▲ 收起营养检测实测值' : '⚙️ 有化验检测报告？录入实测值'}}</text>
+        </view>
 
-          <!-- 展开表单 -->
-          <view wx:if="{{expandedId === feed.feed_id}}" class="override-box">
-            <view class="override-grid">
-              <view class="override-item">
-                <text class="override-label">干物质 (DM %)</text>
-                <input 
-                  class="override-input" 
-                  type="digit" 
-                  placeholder="默认 {{feed.dm_pct}}" 
-                  value="{{feed.override.dm_pct || ''}}" 
-                  bindinput="onOverrideInput" 
-                  data-id="{{feed.feed_id}}" 
-                  data-field="dm_pct"
-                />
-              </view>
-              <view class="override-item">
-                <text class="override-label">代谢能 (MJ/kg DM)</text>
-                <input 
-                  class="override-input" 
-                  type="digit" 
-                  placeholder="默认 {{feed.me_mj_per_kg_dm}}" 
-                  value="{{feed.override.me_mj_per_kg_dm || ''}}" 
-                  bindinput="onOverrideInput" 
-                  data-id="{{feed.feed_id}}" 
-                  data-field="me_mj_per_kg_dm"
-                />
-              </view>
-              <view class="override-item">
-                <text class="override-label">粗蛋白 (% DM)</text>
-                <input 
-                  class="override-input" 
-                  type="digit" 
-                  placeholder="默认 {{feed.cp_pct_dm}}" 
-                  value="{{feed.override.cp_pct_dm || ''}}" 
-                  bindinput="onOverrideInput" 
-                  data-id="{{feed.feed_id}}" 
-                  data-field="cp_pct_dm"
-                />
-              </view>
-              <view class="override-item">
-                <text class="override-label">NDF (% DM)</text>
-                <input 
-                  class="override-input" 
-                  type="digit" 
-                  placeholder="默认 {{feed.ndf_pct_dm}}" 
-                  value="{{feed.override.ndf_pct_dm || ''}}" 
-                  bindinput="onOverrideInput" 
-                  data-id="{{feed.feed_id}}" 
-                  data-field="ndf_pct_dm"
-                />
-              </view>
-              <view class="override-item">
-                <text class="override-label">钙 (% DM)</text>
-                <input 
-                  class="override-input" 
-                  type="digit" 
-                  placeholder="默认 {{feed.ca_pct_dm}}" 
-                  value="{{feed.override.ca_pct_dm || ''}}" 
-                  bindinput="onOverrideInput" 
-                  data-id="{{feed.feed_id}}" 
-                  data-field="ca_pct_dm"
-                />
-              </view>
-              <view class="override-item">
-                <text class="override-label">磷 (% DM)</text>
-                <input 
-                  class="override-input" 
-                  type="digit" 
-                  placeholder="默认 {{feed.p_pct_dm}}" 
-                  value="{{feed.override.p_pct_dm || ''}}" 
-                  bindinput="onOverrideInput" 
-                  data-id="{{feed.feed_id}}" 
-                  data-field="p_pct_dm"
-                />
-              </view>
+        <!-- 展开实测值表单 -->
+        <view wx:if="{{expandedId === feed.feed_id}}" class="override-box">
+          <view class="override-grid">
+            <view class="override-item">
+              <text class="override-label">干物质 (DM %)</text>
+              <input 
+                class="override-input" 
+                type="digit" 
+                placeholder="默认 {{feed.dm_pct}}" 
+                value="{{feed.override.dm_pct || ''}}" 
+                bindinput="onOverrideInput" 
+                data-id="{{feed.feed_id}}" 
+                data-field="dm_pct"
+              />
             </view>
-            <text class="override-hint">没有检测报告可留空，系统自动按国家标准数据库估算值计算。</text>
+            <view class="override-item">
+              <text class="override-label">代谢能 (MJ/kg DM)</text>
+              <input 
+                class="override-input" 
+                type="digit" 
+                placeholder="默认 {{feed.me_mj_per_kg_dm}}" 
+                value="{{feed.override.me_mj_per_kg_dm || ''}}" 
+                bindinput="onOverrideInput" 
+                data-id="{{feed.feed_id}}" 
+                data-field="me_mj_per_kg_dm"
+              />
+            </view>
+            <view class="override-item">
+              <text class="override-label">粗蛋白 (% DM)</text>
+              <input 
+                class="override-input" 
+                type="digit" 
+                placeholder="默认 {{feed.cp_pct_dm}}" 
+                value="{{feed.override.cp_pct_dm || ''}}" 
+                bindinput="onOverrideInput" 
+                data-id="{{feed.feed_id}}" 
+                data-field="cp_pct_dm"
+              />
+            </view>
+            <view class="override-item">
+              <text class="override-label">NDF (% DM)</text>
+              <input 
+                class="override-input" 
+                type="digit" 
+                placeholder="默认 {{feed.ndf_pct_dm}}" 
+                value="{{feed.override.ndf_pct_dm || ''}}" 
+                bindinput="onOverrideInput" 
+                data-id="{{feed.feed_id}}" 
+                data-field="ndf_pct_dm"
+              />
+            </view>
+            <view class="override-item">
+              <text class="override-label">钙 (% DM)</text>
+              <input 
+                class="override-input" 
+                type="digit" 
+                placeholder="默认 {{feed.ca_pct_dm}}" 
+                value="{{feed.override.ca_pct_dm || ''}}" 
+                bindinput="onOverrideInput" 
+                data-id="{{feed.feed_id}}" 
+                data-field="ca_pct_dm"
+              />
+            </view>
+            <view class="override-item">
+              <text class="override-label">磷 (% DM)</text>
+              <input 
+                class="override-input" 
+                type="digit" 
+                placeholder="默认 {{feed.p_pct_dm}}" 
+                value="{{feed.override.p_pct_dm || ''}}" 
+                bindinput="onOverrideInput" 
+                data-id="{{feed.feed_id}}" 
+                data-field="p_pct_dm"
+              />
+            </view>
           </view>
+          <text class="override-hint">没有检测报告可留空，系统自动按国家标准数据库估算值计算。</text>
         </view>
       </view>
     </view>
+  </view>
 
-    <!-- 底部操作按钮 -->
-    <view class="btn-row">
-      <button class="btn-secondary" bindtap="handleBack">上一步</button>
-      <button class="btn-primary" bindtap="handleCalculate">下一步：计算配方</button>
+  <!-- 🚀 核心设计：底部悬浮固定操作栏（无需滑到底部，随时一键计算） -->
+  <view class="floating-bottom-bar">
+    <view class="bar-left" bindtap="handleBack">
+      <text class="bar-back-icon">‹</text>
+      <text class="bar-back-text">上一步</text>
     </view>
-  </block>
+    <view class="bar-center">
+      <view class="bar-count-badge">已选 <text class="count-num">{{selectedCount}}</text> 种原料</view>
+      <text class="bar-sub-tip">{{selectedCount >= 3 ? '原料充足' : '建议选 3 种以上'}}</text>
+    </view>
+    <view class="bar-right">
+      <button class="btn-floating-calc" bindtap="handleCalculate">
+        开始智能配比 ➔
+      </button>
+    </view>
+  </view>
 </view>

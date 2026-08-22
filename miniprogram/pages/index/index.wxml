@@ -18,23 +18,39 @@
 
   <!-- 表单主体卡片 -->
   <view class="card">
-    <view class="card-title">第一步：填写羊只信息</view>
+    <view class="card-title">
+      <text>🐐 第一步：填写羊只信息</text>
+      <text class="badge-green">国家标准</text>
+    </view>
     <view class="card-subtitle">按单只羊的实际生理阶段填写，系统自动核算每日基础与生产营养需要。</view>
 
-    <!-- 生理阶段选择 -->
+    <!-- 生理阶段选择器分段按钮 -->
     <view class="form-group">
-      <text class="form-label">羊只阶段</text>
-      <picker bindchange="onClassChange" value="{{classIndex}}" range="{{classList}}" range-key="label">
-        <view class="form-select">
-          <text>{{classList[classIndex].label}}</text>
-          <text style="color: #94a3b8;">▼</text>
+      <text class="form-label">羊只生理阶段</text>
+      <view class="class-segmented-bar">
+        <view 
+          class="class-seg-item {{classList[classIndex].value === 'lactating' ? 'active' : ''}}" 
+          bindtap="selectClass" 
+          data-index="0"
+        >
+          🥛 成年泌乳奶山羊
         </view>
-      </picker>
+        <view 
+          class="class-seg-item {{classList[classIndex].value === 'maintenance' ? 'active' : ''}}" 
+          bindtap="selectClass" 
+          data-index="1"
+        >
+          🌾 成年维持期羊
+        </view>
+      </view>
     </view>
 
     <!-- 体重 -->
     <view class="form-group">
-      <text class="form-label">体重 (kg)</text>
+      <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx;">
+        <text class="form-label" style="margin-bottom: 0;">羊只体重 (kg)</text>
+        <text class="form-hint" style="margin-top: 0;">范围 25 – 90 kg</text>
+      </view>
       <input 
         class="form-input" 
         type="digit" 
@@ -42,13 +58,28 @@
         value="{{bodyWeightKg}}" 
         bindinput="onWeightInput"
       />
-      <text class="form-hint">适用范围 25 – 90 kg</text>
+      <!-- 快捷选择芯片 -->
+      <view class="quick-chips">
+        <text class="quick-chip-label">快捷填入：</text>
+        <view 
+          wx:for="{{['45', '50', '55', '60', '70']}}" 
+          wx:key="*this" 
+          class="chip-item {{bodyWeightKg === item ? 'chip-active' : ''}}"
+          bindtap="quickSetWeight"
+          data-val="{{item}}"
+        >
+          {{item}}kg
+        </view>
+      </view>
     </view>
 
     <!-- 泌乳期专属字段 -->
     <block wx:if="{{classList[classIndex].value === 'lactating'}}">
       <view class="form-group">
-        <text class="form-label">日产奶量 (kg/天)</text>
+        <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx;">
+          <text class="form-label" style="margin-bottom: 0;">日产奶量 (kg/天)</text>
+          <text class="form-hint" style="margin-top: 0;">范围 0.2 – 5.0 kg/天</text>
+        </view>
         <input 
           class="form-input" 
           type="digit" 
@@ -56,11 +87,26 @@
           value="{{milkKg}}" 
           bindinput="onMilkInput"
         />
-        <text class="form-hint">适用范围 0.2 – 5.0 kg/天</text>
+        <!-- 快捷选择产奶量 -->
+        <view class="quick-chips">
+          <text class="quick-chip-label">快捷填入：</text>
+          <view 
+            wx:for="{{['1.5', '2.0', '2.5', '3.0', '3.5']}}" 
+            wx:key="*this" 
+            class="chip-item {{milkKg === item ? 'chip-active' : ''}}"
+            bindtap="quickSetMilk"
+            data-val="{{item}}"
+          >
+            {{item}}kg
+          </view>
+        </view>
       </view>
 
       <view class="form-group">
-        <text class="form-label">乳脂率 (%, 可选)</text>
+        <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx;">
+          <text class="form-label" style="margin-bottom: 0;">乳脂率 (%, 可选)</text>
+          <text class="form-hint" style="margin-top: 0;">不填默认 4.0%</text>
+        </view>
         <input 
           class="form-input" 
           type="digit" 
@@ -68,7 +114,6 @@
           value="{{milkFatPercent}}" 
           bindinput="onFatInput"
         />
-        <text class="form-hint">不填默认 4.0%；适用范围 2.0 – 7.0%</text>
       </view>
     </block>
 
@@ -79,7 +124,7 @@
 
     <!-- 按钮 -->
     <view class="btn-row">
-      <button class="btn-primary" bindtap="handleNext">下一步：选择原料</button>
+      <button class="btn-primary" bindtap="handleNext">下一步：选择原料与价格 ➔</button>
     </view>
   </view>
 </view>
