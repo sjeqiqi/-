@@ -172,7 +172,7 @@ page {
   box-sizing: border-box;
 }
 
-/* 按钮规范 */
+/* 按钮规范 (强制 Flex 垂直+水平绝对居中，去除微信默认 padding 偏移) */
 .btn-row {
   display: flex;
   gap: 20rpx;
@@ -182,17 +182,26 @@ page {
 
 .btn-primary {
   flex: 1;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #ffffff;
   font-size: 32rpx;
-  font-weight: 600;
+  font-weight: 700;
   height: 94rpx;
-  line-height: 94rpx;
-  border-radius: 20rpx;
-  text-align: center;
+  line-height: 1 !important;
+  padding: 0 24rpx !important;
+  margin: 0 !important;
+  border-radius: 22rpx;
   border: none;
   box-shadow: 0 8rpx 20rpx rgba(5, 150, 105, 0.28);
+  box-sizing: border-box;
   transition: all 0.2s ease;
+}
+
+.btn-primary::after {
+  border: none;
 }
 
 .btn-primary:active {
@@ -202,23 +211,35 @@ page {
 
 .btn-secondary {
   flex: 1;
-  background: #f8fafc;
-  color: #475569;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #ffffff;
+  color: #334155;
   font-size: 30rpx;
-  font-weight: 600;
+  font-weight: 700;
   height: 94rpx;
-  line-height: 94rpx;
-  border-radius: 20rpx;
-  text-align: center;
+  line-height: 1 !important;
+  padding: 0 24rpx !important;
+  margin: 0 !important;
+  border-radius: 22rpx;
   border: 2rpx solid #cbd5e1;
+  box-sizing: border-box;
+}
+
+.btn-secondary::after {
+  border: none;
 }
 
 .btn-secondary:active {
   background: #f1f5f9;
 }
 
-/* 提示与状态标签 */
+/* 提示与状态标签 (强制 Flex 垂直水平居中) */
 .badge-green {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: #ecfdf5;
   color: #059669;
   border: 1rpx solid #a7f3d0;
@@ -226,9 +247,14 @@ page {
   padding: 6rpx 14rpx;
   border-radius: 10rpx;
   font-weight: 600;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .badge-yellow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: #fef3c7;
   color: #b45309;
   border: 1rpx solid #fde68a;
@@ -236,9 +262,14 @@ page {
   padding: 6rpx 14rpx;
   border-radius: 10rpx;
   font-weight: 600;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .badge-red {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: #fee2e2;
   color: #b91c1c;
   border: 1rpx solid #fecaca;
@@ -246,6 +277,8 @@ page {
   padding: 6rpx 14rpx;
   border-radius: 10rpx;
   font-weight: 600;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .alert-box {

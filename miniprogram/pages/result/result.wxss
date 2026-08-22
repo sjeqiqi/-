@@ -288,7 +288,7 @@
 
 /* 顺序 4：折叠卡片（其他：贴边与未达标指标） */
 .collapse-card {
-  padding: 24rpx 32rpx;
+  padding: 28rpx 32rpx;
   background: #ffffff;
   border: 1rpx solid #e2e8f0;
 }
@@ -297,33 +297,45 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
 }
 
 .collapse-title-row {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  gap: 14rpx;
 }
 
 .collapse-title {
   font-size: 28rpx;
   font-weight: 700;
-  color: #475569;
+  color: #334155;
+  line-height: 1;
+  display: flex;
+  align-items: center;
 }
 
 .collapse-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 20rpx;
   background: #fef3c7;
   color: #b45309;
   border: 1rpx solid #fde68a;
-  padding: 2rpx 10rpx;
-  border-radius: 8rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 10rpx;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .collapse-arrow {
-  font-size: 24rpx;
+  display: inline-flex;
+  align-items: center;
+  font-size: 26rpx;
   color: #4f46e5;
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .collapse-body {
