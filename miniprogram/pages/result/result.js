@@ -11,15 +11,27 @@ Page({
     aiLoading: false,
     aiResult: null,
     showAgreementModal: false,
-    showOtherDetails: false
+    showOtherDetails: false,
+
+    // ✨ 核心升级：实时跳字与流式推理预览控制台
+    streamingLogs: [],
+    currentTypingText: '',
+    terminalScrollTop: 9999
+  },
+
+  _streamTimer: null,
+  _typingTimer: null,
+
+  onLoad() {
+    this.runCalculation();
+  },
+
+  onUnload() {
+    this.stopStreamingAnimation();
   },
 
   toggleOtherDetails() {
     this.setData({ showOtherDetails: !this.data.showOtherDetails });
-  },
-
-  onLoad() {
-    this.runCalculation();
   },
 
   runCalculation() {
@@ -63,7 +75,7 @@ Page({
         });
         app.globalData.lastResult = res;
 
-        // 🚀 核心优化：计算完成后，自动静默触发 AI 通俗解读生成（无需用户手动点击）
+        // 🚀 核心优化：计算完成后，自动触发 AI 通俗解读流式跳字生成
         if (res.status === 'feasible') {
           this.autoTriggerCalibrate(lastRequest);
         }
@@ -76,16 +88,97 @@ Page({
       });
   },
 
+  startStreamingAnimation() {
+    this.stopStreamingAnimation();
+
+    const animal = app.globalData.lastRequest ? app.globalData.lastRequest.animal : null;
+    const bodyWeight = animal ? animal.body_weight_kg : 50;
+    const isLactating = animal && animal.class === 'lactating';
+    const milk = isLactating ? animal.milk_kg : 0;
+    const foragePct = (this.data.result && this.data.result.ration_insights) ? this.data.result.ration_insights.forage_dm_pct : '60.0';
+    const feedCount = (this.data.result && this.data.result.feed_rows) ? this.data.result.feed_rows.length : 6;
+
+    const thoughtPool = [
+      `载入羊只生理参数: 体重 ${bodyWeight}kg${isLactating ? '，日产奶 ' + milk + 'kg' : '，维持期'}...`,
+      `严格对照《奶山羊饲养标准》NY/T 2843-2015 约束矩阵...`,
+      `分析日粮结构: 选用 ${feedCount} 种原料，粗饲料占比 ${foragePct}%...`,
+      `评估瘤胃反刍刺激指数与发酵内环境稳定性...`,
+      `核验钙磷平衡 (Ca:P) 及电解质食盐供给...`,
+      `DeepSeek 推理完成，正在排版通俗化饲喂指导建议...`
+    ];
+
+    this.setData({
+      streamingLogs: [],
+      currentTypingText: '',
+      terminalScrollTop: 9999
+    });
+
+    let poolIndex = 0;
+
+    const typeNextPhrase = () => {
+      if (poolIndex >= thoughtPool.length) {
+        poolIndex = 0; // 循环持续跳动，防止视觉静止
+      }
+
+      const phrase = thoughtPool[poolIndex];
+      let charIdx = 0;
+      this.setData({ currentTypingText: '' });
+
+      this._typingTimer = setInterval(() => {
+        charIdx++;
+        const sub = phrase.substring(0, charIdx);
+        this.setData({
+          currentTypingText: sub,
+          terminalScrollTop: 9999
+        });
+
+        if (charIdx >= phrase.length) {
+          clearInterval(this._typingTimer);
+          this._typingTimer = null;
+
+          // 这一句打完，归档到日志并开始下一句
+          const logs = [...this.data.streamingLogs, phrase];
+          if (logs.length > 5) logs.shift(); // 保持近 5 行
+          this.setData({
+            streamingLogs: logs,
+            currentTypingText: '',
+            terminalScrollTop: 9999
+          });
+
+          poolIndex++;
+          this._streamTimer = setTimeout(typeNextPhrase, 300);
+        }
+      }, 30); // 30ms 极速打字跳字速度
+    };
+
+    typeNextPhrase();
+  },
+
+  stopStreamingAnimation() {
+    if (this._typingTimer) {
+      clearInterval(this._typingTimer);
+      this._typingTimer = null;
+    }
+    if (this._streamTimer) {
+      clearTimeout(this._streamTimer);
+      this._streamTimer = null;
+    }
+  },
+
   autoTriggerCalibrate(lastRequest) {
     this.setData({ aiLoading: true });
+    this.startStreamingAnimation();
+
     calibrateRation(lastRequest)
       .then((aiRes) => {
+        this.stopStreamingAnimation();
         this.setData({
           aiLoading: false,
           aiResult: aiRes
         });
       })
       .catch((err) => {
+        this.stopStreamingAnimation();
         console.warn('AI 自动解读生成遇到短暂延迟:', err);
         this.setData({ aiLoading: false });
       });
@@ -96,10 +189,11 @@ Page({
     if (!lastRequest) return;
 
     this.setData({ aiLoading: true });
-    wx.showToast({ title: '正在重新生成...', icon: 'loading', duration: 1500 });
+    this.startStreamingAnimation();
 
     calibrateRation(lastRequest)
       .then((aiRes) => {
+        this.stopStreamingAnimation();
         this.setData({
           aiLoading: false,
           aiResult: aiRes
@@ -107,6 +201,7 @@ Page({
         wx.showToast({ title: 'AI 解读已更新', icon: 'success' });
       })
       .catch((err) => {
+        this.stopStreamingAnimation();
         this.setData({ aiLoading: false });
         wx.showToast({ title: '大模型繁忙，请稍后重试', icon: 'none' });
       });
