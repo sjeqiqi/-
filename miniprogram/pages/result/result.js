@@ -11,25 +11,11 @@ Page({
     aiLoading: false,
     aiResult: null,
     showAgreementModal: false,
-    showOtherDetails: false,
-
-    // 🚀 核心优化：专业运算仪式感进度（约 3 秒智能呈现）
-    calcProgress: 15,
-    calculatingPhaseText: '正在载入国家饲养标准与营养约束矩阵…'
+    showOtherDetails: false
   },
-
-  _phaseTimer1: null,
-  _phaseTimer2: null,
-  _phaseTimer3: null,
 
   onLoad() {
     this.runCalculation();
-  },
-
-  onUnload() {
-    if (this._phaseTimer1) clearTimeout(this._phaseTimer1);
-    if (this._phaseTimer2) clearTimeout(this._phaseTimer2);
-    if (this._phaseTimer3) clearTimeout(this._phaseTimer3);
   },
 
   toggleOtherDetails() {
@@ -66,56 +52,34 @@ Page({
       app.globalData.lastRequest = lastRequest;
     }
 
-    // 初始化 5 秒专业运算仪式感动效
     this.setData({
       loading: true,
       error: null,
+      result: null,
       aiResult: null,
-      calcProgress: 18,
-      calculatingPhaseText: '正在载入国家饲养标准与营养约束矩阵…'
+      aiLoading: false
     });
 
-    this._phaseTimer1 = setTimeout(() => {
-      this.setData({
-        calcProgress: 45,
-        calculatingPhaseText: '运筹学单纯形法迭代求解：多维搜索最低饲喂成本组合…'
-      });
-    }, 1200);
-
-    this._phaseTimer2 = setTimeout(() => {
-      this.setData({
-        calcProgress: 75,
-        calculatingPhaseText: '正在按 10g 精度逐项复核干物质、代谢能、粗蛋白与钙磷比…'
-      });
-    }, 2600);
-
-    this._phaseTimer3 = setTimeout(() => {
-      this.setData({
-        calcProgress: 95,
-        calculatingPhaseText: '全项指标优化收敛达成，正在生成科学配方与达标报告…'
-      });
-    }, 3900);
-
-    // 确保有 5 秒钟的专业深度计算展示节奏（体现严谨运筹学求解）
-    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 5000));
+    // 🚀 核心优化：真实并行计算与 DeepSeek 生成，等报告全部生成完毕后一块儿输出展示
     const calcPromise = calculateRation(lastRequest);
+    const calibratePromise = calibrateRation(lastRequest).catch((err) => {
+      console.warn('AI 接口调用异常，已启用本地科学复核兜底:', err);
+      return null;
+    });
 
-    Promise.all([calcPromise, minDelayPromise])
-      .then(([res]) => {
-        this.setData({ calcProgress: 100 });
-        setTimeout(() => {
-          this.formatResultData(res);
-          this.setData({
-            loading: false,
-            result: res
-          });
-          app.globalData.lastResult = res;
+    Promise.all([calcPromise, calibratePromise])
+      .then(([res, aiRes]) => {
+        this.formatResultData(res);
+        app.globalData.lastResult = res;
 
-          // 🚀 核心保障：配方计算完成后，自动在后台触发 AI 解读生成
-          if (res.status === 'feasible') {
-            this.autoTriggerCalibrate(lastRequest);
-          }
-        }, 200);
+        // 统一处理并校验 AI 科学解读
+        const validatedAi = this._cleanAndValidateAiRes(aiRes, res);
+
+        this.setData({
+          loading: false,
+          result: res,
+          aiResult: validatedAi
+        });
       })
       .catch((err) => {
         this.setData({
@@ -125,8 +89,8 @@ Page({
       });
   },
 
-  buildLocalFallbackInsights() {
-    const res = this.data.result;
+  buildLocalFallbackInsights(currentResult) {
+    const res = currentResult || this.data.result;
     const insights = (res && res.ration_insights) ? res.ration_insights : {};
     const foragePct = insights.forage_dm_pct || '55.0';
     const topMe = (insights.top_me_sources && insights.top_me_sources.length > 0) ? insights.top_me_sources[0].name : '主要能量饲料';
@@ -148,39 +112,19 @@ Page({
     };
   },
 
-  _cleanAndValidateAiRes(aiRes) {
+  _cleanAndValidateAiRes(aiRes, currentResult) {
     if (!aiRes || !Array.isArray(aiRes.explanations)) {
-      return this.buildLocalFallbackInsights();
+      return this.buildLocalFallbackInsights(currentResult);
     }
     const cleanList = aiRes.explanations
       .map(s => String(s || '').trim())
       .filter(s => s.length > 2 && !/^[\.\s…\-—_]+$/.test(s) && s !== '...' && s !== '…');
 
     if (cleanList.length === 0) {
-      return this.buildLocalFallbackInsights();
+      return this.buildLocalFallbackInsights(currentResult);
     }
     aiRes.explanations = cleanList;
     return aiRes;
-  },
-
-  autoTriggerCalibrate(lastRequest) {
-    this.setData({ aiLoading: true });
-
-    calibrateRation(lastRequest)
-      .then((aiRes) => {
-        const validated = this._cleanAndValidateAiRes(aiRes);
-        this.setData({
-          aiLoading: false,
-          aiResult: validated
-        });
-      })
-      .catch((err) => {
-        console.warn('AI 接口调用异常，已无缝启用科学复核解读兜底:', err);
-        this.setData({
-          aiLoading: false,
-          aiResult: this.buildLocalFallbackInsights()
-        });
-      });
   },
 
   handleManualCalibrate() {
@@ -192,7 +136,7 @@ Page({
 
     calibrateRation(lastRequest)
       .then((aiRes) => {
-        const validated = this._cleanAndValidateAiRes(aiRes);
+        const validated = this._cleanAndValidateAiRes(aiRes, this.data.result);
         this.setData({
           aiLoading: false,
           aiResult: validated
@@ -203,7 +147,7 @@ Page({
         console.warn('AI 重试异常，使用科学解读兜底:', err);
         this.setData({
           aiLoading: false,
-          aiResult: this.buildLocalFallbackInsights()
+          aiResult: this.buildLocalFallbackInsights(this.data.result)
         });
         wx.showToast({ title: '已更新科学解读', icon: 'success' });
       });

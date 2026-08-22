@@ -16,34 +16,11 @@
     </view>
   </view>
 
-  <!-- 1. 🚀 运算求解仪式感加载卡片（5 秒专业运筹学求解动效） -->
+  <!-- 1. 真实运算与 DeepSeek 智能解读加载中（协同完成后整体呈现） -->
   <view wx:if="{{loading}}" class="card calc-loading-card">
-    <view class="calc-pulse-wrap">
-      <view class="calc-center-icon">📐</view>
-      <view class="calc-spinner-ring"></view>
-    </view>
-
-    <text class="calc-phase-title">{{calculatingPhaseText}}</text>
-
-    <!-- 专业进度条 -->
-    <view class="calc-progress-track">
-      <view class="calc-progress-bar" style="width: {{calcProgress}}%;"></view>
-    </view>
-
-    <!-- 阶段步骤指示 -->
-    <view class="calc-phase-tags">
-      <text class="phase-tag {{calcProgress >= 18 ? 'tag-active' : ''}}">1. 营养约束矩阵</text>
-      <text class="phase-arrow">→</text>
-      <text class="phase-tag {{calcProgress >= 45 ? 'tag-active' : ''}}">2. 单纯形法迭代</text>
-      <text class="phase-arrow">→</text>
-      <text class="phase-tag {{calcProgress >= 75 ? 'tag-active' : ''}}">3. 10g精度复核</text>
-      <text class="phase-arrow">→</text>
-      <text class="phase-tag {{calcProgress >= 95 ? 'tag-active' : ''}}">4. 达标报告生成</text>
-    </view>
-
-    <text class="calc-standard-subtitle">
-      依据农业行业标准《奶山羊饲养管理技术规范》（NY/T 2835-2015）
-    </text>
+    <view class="spinner"></view>
+    <text class="calc-loading-title">正在生成最低成本日粮与科学饲喂报告…</text>
+    <text class="calc-loading-subtitle">运筹学优化求解 · DeepSeek 智能解读生成中</text>
   </view>
 
   <!-- 2. 发生网络或服务端错误 -->
@@ -211,14 +188,11 @@
         </button>
       </view>
 
-      <!-- 3.1 AI 正在生成中的优雅加载状态 -->
+      <!-- 3.1 手动重新分析时的局部加载状态 -->
       <view wx:if="{{aiLoading}}" class="ai-loading-box">
         <view class="spinner" style="width: 44rpx; height: 44rpx; border-width: 4rpx; border-top-color: #4f46e5;"></view>
-        <text style="font-size: 28rpx; color: #4338ca; margin-top: 18rpx; font-weight: 600; display: block;">
-          DeepSeek 正在结合羊只生理指标生成科学解读…
-        </text>
-        <text style="font-size: 22rpx; color: #6366f1; margin-top: 6rpx; display: block;">
-          配比表与营养表已就绪，解读结果即将呈现
+        <text style="font-size: 26rpx; color: #4338ca; margin-top: 14rpx; font-weight: 600; display: block;">
+          正在重新生成 DeepSeek 智能解读…
         </text>
       </view>
 

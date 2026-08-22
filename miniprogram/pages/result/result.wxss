@@ -1,108 +1,42 @@
 /* pages/result/result.wxss */
 
-/* 🚀 专业运算求解 3 秒仪式感加载卡片 */
-.calc-loading-card {
-  text-align: center;
-  padding: 80rpx 36rpx;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-  border: 2rpx solid #e2e8f0;
-  border-radius: 28rpx;
-  box-shadow: 0 12rpx 32rpx rgba(15, 23, 42, 0.06);
-}
-
-.calc-pulse-wrap {
-  position: relative;
-  width: 140rpx;
-  height: 140rpx;
-  margin: 0 auto 32rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.calc-center-icon {
-  font-size: 56rpx;
-  z-index: 2;
-}
-
-.calc-spinner-ring {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+/* 加载动画 */
+.spinner {
+  width: 68rpx;
+  height: 68rpx;
   border: 6rpx solid #e2e8f0;
   border-top-color: #10b981;
-  border-right-color: #059669;
   border-radius: 50%;
-  animation: spin 0.9s linear infinite;
-  box-sizing: border-box;
+  margin: 0 auto;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.calc-phase-title {
-  font-size: 30rpx;
+/* 统一运算与生成加载卡片 */
+.calc-loading-card {
+  text-align: center;
+  padding: 96rpx 36rpx;
+  background: #ffffff;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 28rpx;
+  box-shadow: 0 8rpx 28rpx rgba(15, 23, 42, 0.04);
+}
+
+.calc-loading-title {
+  font-size: 32rpx;
   font-weight: 700;
   color: #0f172a;
   display: block;
-  min-height: 48rpx;
-  line-height: 1.5;
-  margin-bottom: 30rpx;
-  transition: all 0.3s ease;
+  margin-top: 32rpx;
+  margin-bottom: 12rpx;
 }
 
-.calc-progress-track {
-  width: 100%;
-  height: 14rpx;
-  background: #e2e8f0;
-  border-radius: 20rpx;
-  overflow: hidden;
-  margin-bottom: 28rpx;
-}
-
-.calc-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-  border-radius: 20rpx;
-  transition: width 0.8s ease;
-}
-
-.calc-phase-tags {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10rpx;
-  margin-bottom: 28rpx;
-  flex-wrap: wrap;
-}
-
-.phase-tag {
-  font-size: 22rpx;
-  color: #94a3b8;
-  background: #f1f5f9;
-  padding: 6rpx 14rpx;
-  border-radius: 10rpx;
-  transition: all 0.3s ease;
-}
-
-.phase-tag.tag-active {
-  color: #059669;
-  background: #ecfdf5;
-  border: 1rpx solid #a7f3d0;
-  font-weight: 600;
-}
-
-.phase-arrow {
-  font-size: 20rpx;
-  color: #cbd5e1;
-}
-
-.calc-standard-subtitle {
-  font-size: 22rpx;
-  color: #94a3b8;
+.calc-loading-subtitle {
+  font-size: 24rpx;
+  color: #64748b;
   display: block;
 }
 
