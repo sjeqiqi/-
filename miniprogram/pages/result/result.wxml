@@ -191,36 +191,25 @@
         </button>
       </view>
 
-      <!-- 3.1 🚀 核心升级：AI 动态流式跳字与推理监控预览框（不能点开，字刷刷刷划过） -->
-      <view wx:if="{{aiLoading}}" class="ai-terminal-monitor">
-        <!-- 终端顶栏 -->
-        <view class="terminal-header">
-          <view class="terminal-dots">
-            <view class="dot dot-red"></view>
-            <view class="dot dot-yellow"></view>
-            <view class="dot dot-green"></view>
-            <text class="terminal-title">DeepSeek AI 实时推理流</text>
-          </view>
-          <view class="terminal-status">
-            <view class="radar-spinner"></view>
-            <text class="status-live-text">正在深度分析…</text>
-          </view>
+      <!-- 3.1 🚀 核心升级：单行流式 Token 实时增加与向左滑动跑马灯预览框 -->
+      <view wx:if="{{aiLoading}}" class="single-line-token-streamer">
+        <view class="streamer-left-tag">
+          <text class="sparkle-icon">✨</text>
+          <text class="tag-name">DeepSeek</text>
         </view>
 
-        <!-- 实时跳字控制台屏幕 -->
-        <scroll-view scroll-y scroll-top="{{terminalScrollTop}}" class="terminal-screen">
-          <view class="terminal-logs">
-            <view wx:for="{{streamingLogs}}" wx:key="*this" class="log-line">
-              <text class="log-prefix">&gt;</text>
-              <text class="log-text">{{item}}</text>
-            </view>
-            <view class="log-line current-line" wx:if="{{currentTypingText}}">
-              <text class="log-prefix">&gt;</text>
-              <text class="log-typing">{{currentTypingText}}</text>
-              <text class="cursor-blink">▋</text>
-            </view>
+        <!-- 单行流式跑马灯文本窗口（自动向左滑动最新 Token，不能点开） -->
+        <scroll-view scroll-x scroll-left="{{streamScrollLeft}}" class="streamer-marquee-window">
+          <view class="streamer-track">
+            <text class="streamer-text">{{singleLineStreamText}}</text>
+            <text class="cursor-glow">▋</text>
           </view>
         </scroll-view>
+
+        <view class="streamer-right-status">
+          <view class="mini-spinner"></view>
+          <text class="status-live-label">生成中</text>
+        </view>
       </view>
 
       <!-- 3.2 AI 生成完成后的解读内容 -->

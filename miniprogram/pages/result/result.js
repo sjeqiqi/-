@@ -13,10 +13,9 @@ Page({
     showAgreementModal: false,
     showOtherDetails: false,
 
-    // ✨ 核心升级：实时跳字与流式推理预览控制台
-    streamingLogs: [],
-    currentTypingText: '',
-    terminalScrollTop: 9999
+    // 🚀 核心升级：单行流式 Token 增加与向左滑动跑马灯预览
+    singleLineStreamText: '',
+    streamScrollLeft: 0
   },
 
   _streamTimer: null,
@@ -75,7 +74,7 @@ Page({
         });
         app.globalData.lastResult = res;
 
-        // 🚀 核心优化：计算完成后，自动触发 AI 通俗解读流式跳字生成
+        // 🚀 核心优化：计算完成后，自动触发 AI 单行流式 Token 跑马灯预览
         if (res.status === 'feasible') {
           this.autoTriggerCalibrate(lastRequest);
         }
@@ -88,7 +87,7 @@ Page({
       });
   },
 
-  startStreamingAnimation() {
+  startSingleLineStream() {
     this.stopStreamingAnimation();
 
     const animal = app.globalData.lastRequest ? app.globalData.lastRequest.animal : null;
@@ -98,60 +97,26 @@ Page({
     const foragePct = (this.data.result && this.data.result.ration_insights) ? this.data.result.ration_insights.forage_dm_pct : '60.0';
     const feedCount = (this.data.result && this.data.result.feed_rows) ? this.data.result.feed_rows.length : 6;
 
-    const thoughtPool = [
-      `载入羊只生理参数: 体重 ${bodyWeight}kg${isLactating ? '，日产奶 ' + milk + 'kg' : '，维持期'}...`,
-      `严格对照《奶山羊饲养标准》NY/T 2843-2015 约束矩阵...`,
-      `分析日粮结构: 选用 ${feedCount} 种原料，粗饲料占比 ${foragePct}%...`,
-      `评估瘤胃反刍刺激指数与发酵内环境稳定性...`,
-      `核验钙磷平衡 (Ca:P) 及电解质食盐供给...`,
-      `DeepSeek 推理完成，正在排版通俗化饲喂指导建议...`
-    ];
+    const fullStreamContent = `[DeepSeek 实时推理] 羊只特征: 体重 ${bodyWeight}kg${isLactating ? '，日产奶 ' + milk + 'kg' : '，维持期'}... 严格对照《奶山羊饲养标准》NY/T 2843-2015 约束矩阵... 选用 ${feedCount} 种原料，粗饲料占干物质 ${foragePct}%... 评估核心代谢能与粗蛋白利用率，核验钙磷比平衡 (Ca:P) 及食盐供给... 单纯形优化收敛，正在转写通俗化饲喂指导建议...`;
 
+    let charIdx = 0;
     this.setData({
-      streamingLogs: [],
-      currentTypingText: '',
-      terminalScrollTop: 9999
+      singleLineStreamText: '',
+      streamScrollLeft: 0
     });
 
-    let poolIndex = 0;
-
-    const typeNextPhrase = () => {
-      if (poolIndex >= thoughtPool.length) {
-        poolIndex = 0; // 循环持续跳动，防止视觉静止
+    this._typingTimer = setInterval(() => {
+      charIdx++;
+      if (charIdx > fullStreamContent.length) {
+        charIdx = 1; // 循环流式滑动
       }
-
-      const phrase = thoughtPool[poolIndex];
-      let charIdx = 0;
-      this.setData({ currentTypingText: '' });
-
-      this._typingTimer = setInterval(() => {
-        charIdx++;
-        const sub = phrase.substring(0, charIdx);
-        this.setData({
-          currentTypingText: sub,
-          terminalScrollTop: 9999
-        });
-
-        if (charIdx >= phrase.length) {
-          clearInterval(this._typingTimer);
-          this._typingTimer = null;
-
-          // 这一句打完，归档到日志并开始下一句
-          const logs = [...this.data.streamingLogs, phrase];
-          if (logs.length > 5) logs.shift(); // 保持近 5 行
-          this.setData({
-            streamingLogs: logs,
-            currentTypingText: '',
-            terminalScrollTop: 9999
-          });
-
-          poolIndex++;
-          this._streamTimer = setTimeout(typeNextPhrase, 300);
-        }
-      }, 30); // 30ms 极速打字跳字速度
-    };
-
-    typeNextPhrase();
+      const currentText = fullStreamContent.substring(0, charIdx);
+      this.setData({
+        singleLineStreamText: currentText,
+        // 动态向左滑动：随着字符增加，滚动条向右推移，保证最新字符一直在视野中向左滑动
+        streamScrollLeft: Math.max(0, (charIdx - 18) * 16)
+      });
+    }, 28); // 28ms 单行极速流式输出
   },
 
   stopStreamingAnimation() {
@@ -167,7 +132,7 @@ Page({
 
   autoTriggerCalibrate(lastRequest) {
     this.setData({ aiLoading: true });
-    this.startStreamingAnimation();
+    this.startSingleLineStream();
 
     calibrateRation(lastRequest)
       .then((aiRes) => {
@@ -189,7 +154,7 @@ Page({
     if (!lastRequest) return;
 
     this.setData({ aiLoading: true });
-    this.startStreamingAnimation();
+    this.startSingleLineStream();
 
     calibrateRation(lastRequest)
       .then((aiRes) => {

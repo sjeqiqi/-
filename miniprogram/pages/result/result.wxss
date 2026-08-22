@@ -140,121 +140,105 @@
   margin: 0;
 }
 
-/* 🚀 核心升级：AI 实时流式跳字与推理监控终端 */
-.ai-terminal-monitor {
+/* 🚀 核心升级：单行流式 Token 实时增加与向左滑动跑马灯预览框 */
+.single-line-token-streamer {
   background: #0f172a;
-  border-radius: 20rpx;
-  border: 2rpx solid #334155;
-  overflow: hidden;
+  border-radius: 18rpx;
+  border: 1.5rpx solid #334155;
+  height: 84rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 20rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 10rpx 28rpx rgba(15, 23, 42, 0.18);
-  pointer-events: none; /* 预览框不可点击交互，纯视觉监控 */
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.16);
+  pointer-events: none; /* 纯只读视觉跑马灯，不能点开 */
+  box-sizing: border-box;
 }
 
-.terminal-header {
+.streamer-left-tag {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  background: #1e293b;
-  padding: 14rpx 24rpx;
-  border-bottom: 1rpx solid #334155;
+  gap: 6rpx;
+  background: rgba(99, 102, 241, 0.25);
+  border: 1rpx solid #6366f1;
+  border-radius: 10rpx;
+  padding: 4rpx 12rpx;
+  margin-right: 14rpx;
+  flex-shrink: 0;
 }
 
-.terminal-dots {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
+.sparkle-icon {
+  font-size: 20rpx;
 }
 
-.dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-}
-
-.dot-red { background: #ef4444; }
-.dot-yellow { background: #f59e0b; }
-.dot-green { background: #10b981; }
-
-.terminal-title {
-  font-size: 22rpx;
-  color: #cbd5e1;
+.tag-name {
+  font-size: 20rpx;
+  color: #c7d2fe;
+  font-weight: 700;
   font-family: monospace;
-  margin-left: 8rpx;
-  font-weight: 600;
 }
 
-.terminal-status {
+.streamer-marquee-window {
+  flex: 1;
+  height: 84rpx;
+  white-space: nowrap;
+  overflow: hidden;
   display: flex;
   align-items: center;
-  gap: 10rpx;
 }
 
-.radar-spinner {
-  width: 22rpx;
-  height: 22rpx;
+.streamer-track {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  height: 84rpx;
+}
+
+.streamer-text {
+  font-size: 24rpx;
+  color: #38bdf8;
+  font-family: monospace;
+  line-height: 84rpx;
+  white-space: nowrap;
+  word-break: keep-all;
+  font-weight: 500;
+}
+
+.cursor-glow {
+  color: #10b981;
+  font-size: 22rpx;
+  margin-left: 6rpx;
+  animation: cursor-glow 0.6s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes cursor-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.streamer-right-status {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-left: 14rpx;
+  flex-shrink: 0;
+}
+
+.mini-spinner {
+  width: 20rpx;
+  height: 20rpx;
   border: 3rpx solid #475569;
   border-top-color: #38bdf8;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
 
-.status-live-text {
+.status-live-label {
   font-size: 20rpx;
-  color: #38bdf8;
-  font-weight: 600;
-  font-family: monospace;
-}
-
-.terminal-screen {
-  height: 180rpx;
-  max-height: 220rpx;
-  padding: 20rpx 24rpx;
-  box-sizing: border-box;
-  background: #090d16;
-}
-
-.terminal-logs {
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-
-.log-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 10rpx;
-  font-family: monospace;
-  font-size: 22rpx;
-  line-height: 1.4;
-}
-
-.log-prefix {
-  color: #6366f1;
-  font-weight: 700;
-}
-
-.log-text {
   color: #94a3b8;
-  word-break: break-all;
-}
-
-.log-typing {
-  color: #38bdf8;
   font-weight: 600;
-  word-break: break-all;
-}
-
-.cursor-blink {
-  color: #10b981;
-  font-size: 20rpx;
-  margin-left: 4rpx;
-  animation: cursor-blink 0.7s infinite;
-}
-
-@keyframes cursor-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  font-family: monospace;
 }
 
 /* AI 解读最终结果展示 */
