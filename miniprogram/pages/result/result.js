@@ -106,17 +106,35 @@ Page({
     if (!lastRequest) return;
 
     this.setData({ calibrating: true });
+    wx.showLoading({ title: 'AI 正在分析配方...', mask: true });
+
     calibrateRation(lastRequest)
       .then((aiRes) => {
+        wx.hideLoading();
         this.setData({
           calibrating: false,
           aiResult: aiRes
         });
-        wx.showToast({ title: 'AI 解读已生成', icon: 'success' });
+        if (aiRes.ai_unavailable) {
+          wx.showToast({ title: '已启用本地安全解读', icon: 'none', duration: 2500 });
+        } else {
+          wx.showToast({ title: 'AI 解读已生成', icon: 'success' });
+        }
       })
       .catch((err) => {
+        wx.hideLoading();
         this.setData({ calibrating: false });
-        wx.showToast({ title: err.message || 'AI 解读暂不可用', icon: 'none' });
+        wx.showModal({
+          title: 'AI 响应稍慢',
+          content: '大模型当前计算繁忙或网络稍有延迟。科学配方结果依然有效，您可以点击重试。',
+          confirmText: '重新生成',
+          cancelText: '我知道了',
+          success: (mRes) => {
+            if (mRes.confirm) {
+              this.handleCalibrate();
+            }
+          }
+        });
       });
   },
 

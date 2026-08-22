@@ -1,4 +1,6 @@
 // app.js
+import { checkHealth } from './utils/api.js';
+
 App({
   globalData: {
     // 微信云托管配置（环境真实ID：prod-d1gcd8sm9cea90836）
@@ -34,5 +36,18 @@ App({
         console.warn('wx.cloud.init 提示：', err);
       }
     }
+
+    // 🚀 核心优化：在小程序启动时立即静默预热云端容器（避免冷启动等待）
+    this.prewarmContainer();
+  },
+
+  prewarmContainer: function () {
+    checkHealth()
+      .then((res) => {
+        console.log('云托管容器已预热就绪:', res);
+      })
+      .catch((err) => {
+        console.log('预热中，云托管将自动唤醒:', err);
+      });
   }
 });

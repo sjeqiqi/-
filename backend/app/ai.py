@@ -160,43 +160,80 @@ def calibrate_with_ai(
     client: httpx.Client | None = None,
     api_key: str | None = None,
 ) -> dict:
-    """调用 DeepSeek 并校验输出；失败时回退到本地固定说明。"""
+    """调用 DeepSeek 并校验输出；支持智能多模型回退与自动重试，失败时回退到本地固定说明。"""
     key = api_key if api_key is not None else os.environ.get("DEEPSEEK_API_KEY")
     if not key:
         return _fallback("未配置 DEEPSEEK_API_KEY")
 
     own_client = client is None
     http: httpx.Client | None = client
+    
+    # 候选模型列表：优先使用配置模型，若不存在则回退至官方通用模型 deepseek-chat
+    models_to_try = [DEEPSEEK_MODEL]
+    if "deepseek-chat" not in models_to_try:
+        models_to_try.append("deepseek-chat")
+
+    last_error: Exception | None = None
+
     try:
         if http is None:
             http = httpx.Client(timeout=TIMEOUT_SECONDS)
-        response = http.post(
-            f"{DEEPSEEK_BASE_URL}/chat/completions",
-            headers={"Authorization": f"Bearer {key}"},
-            json={
-                "model": DEEPSEEK_MODEL,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-                ],
-                "temperature": 0.3,
-                # V4 Flash 会先返回 reasoning_content；600 容易在正式 JSON 前截断。
-                "max_tokens": MAX_RESPONSE_TOKENS,
-                "response_format": {"type": "json_object"},
-            },
-        )
-        msg_obj = response.json()["choices"][0]["message"]
-        content = msg_obj.get("content") or ""
-        if not content.strip() and msg_obj.get("reasoning_content"):
-            content = msg_obj.get("reasoning_content", "")
-        validated = validate_ai_json(_extract_json(content))
-        return {
-            "status": "ok",
-            **validated,
-            "ai_unavailable": False,
-            "fallback_reason": None,
-        }
-    except Exception as exc:  # 网络/超时/结构错误统一回退，绝不破坏确定性结果
+
+        for model_name in models_to_try:
+            for attempt in range(2):  # 每个模型最多重试 2 次（处理短暂网络闪断或 429/503）
+                try:
+                    response = http.post(
+                        f"{DEEPSEEK_BASE_URL}/chat/completions",
+                        headers={"Authorization": f"Bearer {key}"},
+                        json={
+                            "model": model_name,
+                            "messages": [
+                                {"role": "system", "content": SYSTEM_PROMPT},
+                                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+                            ],
+                            "temperature": 0.3,
+                            "max_tokens": MAX_RESPONSE_TOKENS,
+                            "response_format": {"type": "json_object"},
+                        },
+                    )
+                    
+                    if response.status_code == 400 or response.status_code == 404:
+                        # 模型不存在或参数不支持，切换下一个候选模型
+                        last_error = RuntimeError(f"模型 {model_name} 返回 HTTP {response.status_code}")
+                        break
+                    
+                    if response.status_code >= 400:
+                        raise RuntimeError(f"API 返回 HTTP {response.status_code}: {response.text[:100]}")
+
+                    res_json = response.json()
+                    choices = res_json.get("choices")
+                    if not choices:
+                        raise ValueError("API 响应中缺少 choices 字段")
+
+                    msg_obj = choices[0].get("message", {})
+                    content = msg_obj.get("content") or ""
+                    if not content.strip() and msg_obj.get("reasoning_content"):
+                        content = msg_obj.get("reasoning_content", "")
+
+                    validated = validate_ai_json(_extract_json(content))
+                    return {
+                        "status": "ok",
+                        **validated,
+                        "ai_unavailable": False,
+                        "fallback_reason": None,
+                    }
+                except Exception as e:
+                    last_error = e
+                    # 如果不是最后一次重试，稍作等待
+                    if attempt < 1 and not (isinstance(e, RuntimeError) and "HTTP 400" in str(e)):
+                        import time
+                        time.sleep(1.0)
+                    continue
+
+        # 全部模型与重试尝试完毕仍未成功
+        return _fallback(f"{type(last_error).__name__}: {last_error}")
+
+    except Exception as exc:
         return _fallback(f"{type(exc).__name__}: {exc}")
     finally:
         if own_client and http is not None:
