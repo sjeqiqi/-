@@ -148,14 +148,30 @@ Page({
     };
   },
 
+  _cleanAndValidateAiRes(aiRes) {
+    if (!aiRes || !Array.isArray(aiRes.explanations)) {
+      return this.buildLocalFallbackInsights();
+    }
+    const cleanList = aiRes.explanations
+      .map(s => String(s || '').trim())
+      .filter(s => s.length > 2 && !/^[\.\s…\-—_]+$/.test(s) && s !== '...' && s !== '…');
+
+    if (cleanList.length === 0) {
+      return this.buildLocalFallbackInsights();
+    }
+    aiRes.explanations = cleanList;
+    return aiRes;
+  },
+
   autoTriggerCalibrate(lastRequest) {
     this.setData({ aiLoading: true });
 
     calibrateRation(lastRequest)
       .then((aiRes) => {
+        const validated = this._cleanAndValidateAiRes(aiRes);
         this.setData({
           aiLoading: false,
-          aiResult: (aiRes && aiRes.explanations && aiRes.explanations.length > 0) ? aiRes : this.buildLocalFallbackInsights()
+          aiResult: validated
         });
       })
       .catch((err) => {
@@ -176,9 +192,10 @@ Page({
 
     calibrateRation(lastRequest)
       .then((aiRes) => {
+        const validated = this._cleanAndValidateAiRes(aiRes);
         this.setData({
           aiLoading: false,
-          aiResult: (aiRes && aiRes.explanations && aiRes.explanations.length > 0) ? aiRes : this.buildLocalFallbackInsights()
+          aiResult: validated
         });
         wx.showToast({ title: 'AI 解读已更新', icon: 'success' });
       })

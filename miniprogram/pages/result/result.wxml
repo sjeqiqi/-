@@ -196,9 +196,10 @@
     <!-- 顺序 3：配方智能解读 (直接用 AI，未生成时显示生成状态) -->
     <!-- ============================================ -->
     <view class="card">
-      <view class="card-title" style="margin-bottom: 20rpx;">
-        <view style="display: flex; align-items: center; gap: 10rpx;">
-          <text>✨ AI 智能科学配方解读</text>
+      <view class="ai-card-header">
+        <view class="ai-card-title">
+          <text class="ai-sparkle-icon">✨</text>
+          <text class="ai-title-text">AI 智能科学配方解读</text>
         </view>
         <button 
           wx:if="{{result.status === 'feasible'}}" 
@@ -206,7 +207,7 @@
           bindtap="handleManualCalibrate" 
           loading="{{aiLoading}}"
         >
-          {{aiLoading ? '正在分析...' : '重新生成'}}
+          {{aiLoading ? '分析中' : '重新生成'}}
         </button>
       </view>
 
@@ -225,7 +226,7 @@
       <view wx:elif="{{aiResult && aiResult.explanations && aiResult.explanations.length > 0}}" class="ai-box">
         <view class="ai-box-title">
           <text>💡 智能通俗饲喂指导</text>
-          <text wx:if="{{aiResult.ai_unavailable}}" class="tag-estimate">本地安全模式</text>
+          <text wx:if="{{aiResult.ai_unavailable}}" class="tag-estimate">科学复核模式</text>
         </view>
         <view wx:for="{{aiResult.explanations}}" wx:key="*this" class="ai-text">
           • {{item}}

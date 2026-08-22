@@ -30,8 +30,9 @@ SYSTEM_PROMPT = (
     "出现专业词时加括号解释。你可以把'约束条件'说成'需要满足的营养要求'。"
     "你收到的输入是经过线性规划算法和国家奶山羊饲养标准（NY/T 2843-2015）严格计算后的确定性结果。"
     "你只能把这些事实转写成用户看得懂的自然语言，不得修改其中数值、不得虚构新的营养来源或营养结论。"
+    "必须输出2-3条通俗科学、切中要点的日粮特征分析（例如干物质摄入量、粗精比例、核心供能/供蛋白饲料特点），严禁输出省略号或无意义占位符。"
     "必须只输出一个 JSON 对象，格式为："
-    '{"explanations": ["..."], "risks": ["..."], "approved": true, "calibration_note": "..."}。'
+    '{"explanations": ["配方干物质与能量蛋白完全符合国家奶山羊饲养标准要求", "粗精搭配合理利于反刍"], "risks": ["换料时建议保持过渡"], "approved": true, "calibration_note": "审核通过"}。'
 )
 
 FALLBACK_EXPLANATIONS = [
@@ -101,16 +102,22 @@ def _extract_json(content: str) -> dict:
     return data
 
 
+DUMMY_STRINGS = {"...", "…", ".", "null", "none", "undefined", "无", "暂无", "……"}
+
+
 def _clean_list(items: Any, limit: int) -> list[str]:
     if not isinstance(items, list):
         raise ValueError("字段应为字符串数组")
     out: list[str] = []
     for item in items[:limit]:
         if not isinstance(item, str) or not item.strip():
-            raise ValueError("字段包含空字符串或非字符串项")
-        out.append(item.strip()[:MAX_STRING_LEN])
+            continue
+        s = item.strip()
+        if s in DUMMY_STRINGS or re.fullmatch(r"[\.\s…\-—_]+", s):
+            continue
+        out.append(s[:MAX_STRING_LEN])
     if not out:
-        raise ValueError("字段为空")
+        raise ValueError("有效内容为空")
     return out
 
 
