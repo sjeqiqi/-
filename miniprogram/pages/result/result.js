@@ -11,22 +11,11 @@ Page({
     aiLoading: false,
     aiResult: null,
     showAgreementModal: false,
-    showOtherDetails: false,
-
-    // 🚀 核心升级：单行流式 Token 增加与向左滑动跑马灯预览
-    singleLineStreamText: '',
-    streamScrollLeft: 0
+    showOtherDetails: false
   },
-
-  _streamTimer: null,
-  _typingTimer: null,
 
   onLoad() {
     this.runCalculation();
-  },
-
-  onUnload() {
-    this.stopStreamingAnimation();
   },
 
   toggleOtherDetails() {
@@ -74,7 +63,7 @@ Page({
         });
         app.globalData.lastResult = res;
 
-        // 🚀 核心优化：计算完成后，自动触发 AI 单行流式 Token 跑马灯预览
+        // 🚀 核心保障：配方计算完成后，自动在后台触发 AI 解读生成
         if (res.status === 'feasible') {
           this.autoTriggerCalibrate(lastRequest);
         }
@@ -87,64 +76,18 @@ Page({
       });
   },
 
-  startSingleLineStream() {
-    this.stopStreamingAnimation();
-
-    const animal = app.globalData.lastRequest ? app.globalData.lastRequest.animal : null;
-    const bodyWeight = animal ? animal.body_weight_kg : 50;
-    const isLactating = animal && animal.class === 'lactating';
-    const milk = isLactating ? animal.milk_kg : 0;
-    const foragePct = (this.data.result && this.data.result.ration_insights) ? this.data.result.ration_insights.forage_dm_pct : '60.0';
-    const feedCount = (this.data.result && this.data.result.feed_rows) ? this.data.result.feed_rows.length : 6;
-
-    const fullStreamContent = `[DeepSeek 实时推理] 羊只特征: 体重 ${bodyWeight}kg${isLactating ? '，日产奶 ' + milk + 'kg' : '，维持期'}... 严格对照《奶山羊饲养标准》NY/T 2843-2015 约束矩阵... 选用 ${feedCount} 种原料，粗饲料占干物质 ${foragePct}%... 评估核心代谢能与粗蛋白利用率，核验钙磷比平衡 (Ca:P) 及食盐供给... 单纯形优化收敛，正在转写通俗化饲喂指导建议...`;
-
-    let charIdx = 0;
-    this.setData({
-      singleLineStreamText: '',
-      streamScrollLeft: 0
-    });
-
-    this._typingTimer = setInterval(() => {
-      charIdx++;
-      if (charIdx > fullStreamContent.length) {
-        charIdx = 1; // 循环流式滑动
-      }
-      const currentText = fullStreamContent.substring(0, charIdx);
-      this.setData({
-        singleLineStreamText: currentText,
-        // 动态向左滑动：随着字符增加，滚动条向右推移，保证最新字符一直在视野中向左滑动
-        streamScrollLeft: Math.max(0, (charIdx - 18) * 16)
-      });
-    }, 28); // 28ms 单行极速流式输出
-  },
-
-  stopStreamingAnimation() {
-    if (this._typingTimer) {
-      clearInterval(this._typingTimer);
-      this._typingTimer = null;
-    }
-    if (this._streamTimer) {
-      clearTimeout(this._streamTimer);
-      this._streamTimer = null;
-    }
-  },
-
   autoTriggerCalibrate(lastRequest) {
     this.setData({ aiLoading: true });
-    this.startSingleLineStream();
 
     calibrateRation(lastRequest)
       .then((aiRes) => {
-        this.stopStreamingAnimation();
         this.setData({
           aiLoading: false,
           aiResult: aiRes
         });
       })
       .catch((err) => {
-        this.stopStreamingAnimation();
-        console.warn('AI 自动解读生成遇到短暂延迟:', err);
+        console.warn('AI 解读获取异常:', err);
         this.setData({ aiLoading: false });
       });
   },
@@ -154,11 +97,10 @@ Page({
     if (!lastRequest) return;
 
     this.setData({ aiLoading: true });
-    this.startSingleLineStream();
+    wx.showToast({ title: '正在重新生成...', icon: 'loading', duration: 1500 });
 
     calibrateRation(lastRequest)
       .then((aiRes) => {
-        this.stopStreamingAnimation();
         this.setData({
           aiLoading: false,
           aiResult: aiRes
@@ -166,7 +108,6 @@ Page({
         wx.showToast({ title: 'AI 解读已更新', icon: 'success' });
       })
       .catch((err) => {
-        this.stopStreamingAnimation();
         this.setData({ aiLoading: false });
         wx.showToast({ title: '大模型繁忙，请稍后重试', icon: 'none' });
       });

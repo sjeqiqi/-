@@ -61,7 +61,7 @@
     </view>
   </view>
 
-  <!-- 4. 正常配方结果展示 (按用户指定精准顺序排布) -->
+  <!-- 4. 正常配方结果展示 (按用户指定黄金顺序排布) -->
   <block wx:else>
     <!-- 近似配比提示（仅在原料过少时） -->
     <view wx:if="{{result.status === 'approximate'}}" class="alert-box alert-warning" style="margin-bottom: 24rpx;">
@@ -174,7 +174,7 @@
     </view>
 
     <!-- ============================================ -->
-    <!-- 顺序 3：配方智能解读 (直接用 AI，未生成时显示正在生成) -->
+    <!-- 顺序 3：配方智能解读 (直接用 AI，未生成时显示生成状态) -->
     <!-- ============================================ -->
     <view class="card">
       <view class="card-title" style="margin-bottom: 20rpx;">
@@ -191,25 +191,15 @@
         </button>
       </view>
 
-      <!-- 3.1 🚀 核心升级：单行流式 Token 实时增加与向左滑动跑马灯预览框 -->
-      <view wx:if="{{aiLoading}}" class="single-line-token-streamer">
-        <view class="streamer-left-tag">
-          <text class="sparkle-icon">✨</text>
-          <text class="tag-name">DeepSeek</text>
-        </view>
-
-        <!-- 单行流式跑马灯文本窗口（自动向左滑动最新 Token，不能点开） -->
-        <scroll-view scroll-x scroll-left="{{streamScrollLeft}}" class="streamer-marquee-window">
-          <view class="streamer-track">
-            <text class="streamer-text">{{singleLineStreamText}}</text>
-            <text class="cursor-glow">▋</text>
-          </view>
-        </scroll-view>
-
-        <view class="streamer-right-status">
-          <view class="mini-spinner"></view>
-          <text class="status-live-label">生成中</text>
-        </view>
+      <!-- 3.1 AI 正在生成中的优雅加载状态 -->
+      <view wx:if="{{aiLoading}}" class="ai-loading-box">
+        <view class="spinner" style="width: 44rpx; height: 44rpx; border-width: 4rpx; border-top-color: #4f46e5;"></view>
+        <text style="font-size: 28rpx; color: #4338ca; margin-top: 18rpx; font-weight: 600; display: block;">
+          DeepSeek 正在结合羊只生理指标生成科学解读…
+        </text>
+        <text style="font-size: 22rpx; color: #6366f1; margin-top: 6rpx; display: block;">
+          配比表与营养表已就绪，解读结果即将呈现
+        </text>
       </view>
 
       <!-- 3.2 AI 生成完成后的解读内容 -->
