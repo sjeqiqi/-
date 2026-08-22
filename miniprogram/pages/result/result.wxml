@@ -61,7 +61,7 @@
     </view>
   </view>
 
-  <!-- 4. 正常配方结果展示 -->
+  <!-- 4. 正常配方结果展示 (按用户指定精准顺序排布) -->
   <block wx:else>
     <!-- 近似配比提示（仅在原料过少时） -->
     <view wx:if="{{result.status === 'approximate'}}" class="alert-box alert-warning" style="margin-bottom: 24rpx;">
@@ -69,7 +69,7 @@
         ⚠️ 近似参考配比提示
       </text>
       <text style="font-size: 24rpx; line-height: 1.5; display: block;">
-        当前勾选的原料较少，未能完全覆盖所有营养标准。以下为营养缺口最小的近似参考组合，建议补充粗料或矿物质后再饲喂。
+        当前勾选原料较少，未能完全覆盖所有营养标准。以下为营养缺口最小的近似参考组合，建议补充粗料或矿物质后再饲喂。
       </text>
     </view>
 
@@ -107,10 +107,12 @@
       </view>
     </view>
 
-    <!-- 原料用量表 -->
+    <!-- ============================================ -->
+    <!-- 顺序 1：每日原料精准配比表 (配比表) -->
+    <!-- ============================================ -->
     <view class="card" style="padding: 24rpx;">
       <view class="card-title">
-        <text>每日原料精准配比表</text>
+        <text>📋 每日原料精准配比表</text>
         <text style="font-size: 24rpx; font-weight: normal; color: #64748b;">精准至 10g</text>
       </view>
 
@@ -141,9 +143,14 @@
       </text>
     </view>
 
-    <!-- 营养复核明细表 -->
+    <!-- ============================================ -->
+    <!-- 顺序 2：营养达标复核明细表 (营养达标 - 计算好后直接弹出展示) -->
+    <!-- ============================================ -->
     <view class="card" style="padding: 24rpx;">
-      <view class="card-title">营养达标复核明细</view>
+      <view class="card-title">
+        <text>📊 营养达标复核明细</text>
+        <text class="badge-green">国家标准复核</text>
+      </view>
       <view class="card-subtitle">按 10g 整数化后的最终投喂量逐项科学复核</view>
 
       <scroll-view scroll-x class="table-scroll">
@@ -166,11 +173,13 @@
       </scroll-view>
     </view>
 
-    <!-- ✨ 核心升级：AI 智能解读自动生成展示区 -->
+    <!-- ============================================ -->
+    <!-- 顺序 3：配方智能解读 (直接用 AI，未生成时显示正在生成) -->
+    <!-- ============================================ -->
     <view class="card">
       <view class="card-title" style="margin-bottom: 20rpx;">
         <view style="display: flex; align-items: center; gap: 10rpx;">
-          <text>✨ AI 智能科学饲喂解读</text>
+          <text>✨ AI 智能科学配方解读</text>
         </view>
         <button 
           wx:if="{{result.status === 'feasible'}}" 
@@ -178,30 +187,33 @@
           bindtap="handleManualCalibrate" 
           loading="{{aiLoading}}"
         >
-          {{aiLoading ? '生成中...' : '重新生成'}}
+          {{aiLoading ? '正在分析...' : '重新生成'}}
         </button>
       </view>
 
-      <!-- 1. AI 加载中骨架动效 -->
+      <!-- 3.1 AI 正在生成中的动效状态 -->
       <view wx:if="{{aiLoading}}" class="ai-loading-box">
-        <view class="spinner" style="width: 40rpx; height: 40rpx; border-width: 4rpx;"></view>
-        <text style="font-size: 26rpx; color: #4338ca; margin-top: 16rpx; font-weight: 500;">
-          DeepSeek 大模型正在结合羊只生理阶段自动生成解读…
+        <view class="spinner" style="width: 44rpx; height: 44rpx; border-width: 4rpx; border-top-color: #4f46e5;"></view>
+        <text style="font-size: 27rpx; color: #4338ca; margin-top: 18rpx; font-weight: 600; display: block;">
+          DeepSeek 大模型正在结合羊只生理指标生成通俗解读…
+        </text>
+        <text style="font-size: 22rpx; color: #6366f1; margin-top: 6rpx; display: block;">
+          已优先展示配比表与营养表，AI 解读稍后自动呈现
         </text>
       </view>
 
-      <!-- 2. AI 智能解读内容 -->
+      <!-- 3.2 AI 生成完成后的解读内容 -->
       <view wx:elif="{{aiResult && aiResult.explanations && aiResult.explanations.length > 0}}" class="ai-box">
         <view class="ai-box-title">
           <text>💡 智能通俗饲喂指导</text>
-          <text wx:if="{{aiResult.ai_unavailable}}" class="tag-estimate">本地模式</text>
+          <text wx:if="{{aiResult.ai_unavailable}}" class="tag-estimate">本地安全模式</text>
         </view>
         <view wx:for="{{aiResult.explanations}}" wx:key="*this" class="ai-text">
           • {{item}}
         </view>
       </view>
 
-      <!-- 3. 配方构成亮点 -->
+      <!-- 3.3 配方构成亮点 -->
       <view class="insight-block">
         <text class="insight-title">1. 配方构成亮点</text>
         <view class="insight-content">
@@ -215,21 +227,66 @@
         </view>
       </view>
 
-      <!-- 4. 优化机理说明 -->
-      <view class="insight-block">
-        <text class="insight-title">2. 优化机理说明</text>
-        <view class="insight-content">
-          <text>系统严格依照中国奶山羊饲养标准，在保证能量、粗蛋白、粗纤维与钙磷比达标的前提下，通过运筹学模型精准求解每日最低饲喂成本组合。</text>
-        </view>
-      </view>
-
-      <!-- 5. 饲喂与过渡建议 -->
+      <!-- 3.4 日常饲喂管理建议 -->
       <view class="insight-block" style="border-bottom: none;">
-        <text class="insight-title">3. 日常饲喂管理建议</text>
+        <text class="insight-title">2. 日常饲喂管理建议</text>
         <view class="insight-content">
           <view wx:for="{{result.management_tips}}" wx:key="*this" style="margin-bottom: 6rpx;">
             • {{item}}
           </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- ============================================ -->
+    <!-- 顺序 4：其他（折叠卡片：未达标与贴边指标余量提醒） -->
+    <!-- ============================================ -->
+    <view class="card collapse-card">
+      <view class="collapse-header" bindtap="toggleOtherDetails">
+        <view class="collapse-title-row">
+          <text class="collapse-title">📌 其他：贴边指标与余量提醒</text>
+          <text class="collapse-badge" wx:if="{{(result.ration_insights && result.ration_insights.boundary_flags.length > 0) || (result.violations && result.violations.length > 0)}}">
+            {{result.violations && result.violations.length > 0 ? '有未达标项' : '有贴边指标'}}
+          </text>
+        </view>
+        <text class="collapse-arrow {{showOtherDetails ? 'arrow-up' : 'arrow-down'}}">
+          {{showOtherDetails ? '收起 ▲' : '展开 ▼'}}
+        </text>
+      </view>
+
+      <!-- 折叠展开区 -->
+      <view wx:if="{{showOtherDetails}}" class="collapse-body">
+        <!-- 未达标项（仅在 approximate 下展示） -->
+        <view wx:if="{{result.status === 'approximate' && result.violations && result.violations.length > 0}}" style="margin-bottom: 20rpx;">
+          <text class="sub-section-title" style="color: #b91c1c;">未达标指标及缺口</text>
+          <view class="violations-list">
+            <view wx:for="{{result.violations}}" wx:key="code" class="violation-item">
+              ❌ {{item.message}}
+            </view>
+          </view>
+          <text class="form-hint" style="margin-top: 10rpx;">{{result.advice}}</text>
+        </view>
+
+        <!-- 贴边指标余量提醒 -->
+        <view wx:if="{{result.ration_insights && result.ration_insights.boundary_flags.length > 0}}" style="margin-bottom: 20rpx;">
+          <text class="sub-section-title" style="color: #b45309;">贴边指标余量说明（已达标，余量较窄）</text>
+          <view class="boundary-flags-list">
+            <view wx:for="{{result.ration_insights.boundary_flags}}" wx:key="code" class="flag-item">
+              <text class="flag-label">{{item.label}}：</text>
+              <text class="flag-detail">{{item.detail}}</text>
+            </view>
+          </view>
+          <text class="form-hint" style="margin-top: 10rpx;">
+            贴边指标表示该营养素已合格达标但刚好压线，若实际原料批次发生变化建议复测。
+          </text>
+        </view>
+
+        <!-- 优化机理说明 -->
+        <view style="margin-top: 16rpx;">
+          <text class="sub-section-title">优化算法机理</text>
+          <text class="form-hint" style="line-height: 1.5; color: #64748b;">
+            系统严格按照《奶山羊饲养标准》（NY/T 2843-2015），在全项营养约束边界内使用单纯形法求解每日最低成本投喂组合。
+          </text>
         </view>
       </view>
     </view>

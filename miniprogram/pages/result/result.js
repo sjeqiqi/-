@@ -10,7 +10,12 @@ Page({
     result: null,
     aiLoading: false,
     aiResult: null,
-    showAgreementModal: false
+    showAgreementModal: false,
+    showOtherDetails: false
+  },
+
+  toggleOtherDetails() {
+    this.setData({ showOtherDetails: !this.data.showOtherDetails });
   },
 
   onLoad() {

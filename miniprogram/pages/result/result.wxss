@@ -5,7 +5,7 @@
   width: 60rpx;
   height: 60rpx;
   border: 6rpx solid #e2e8f0;
-  border-top-color: #16a34a;
+  border-top-color: #10b981;
   border-radius: 50%;
   margin: 0 auto;
   animation: spin 0.8s linear infinite;
@@ -25,10 +25,10 @@
 
 .metric-card {
   background: #ffffff;
-  border-radius: 16rpx;
+  border-radius: 20rpx;
   padding: 24rpx;
   border: 1rpx solid #e2e8f0;
-  box-shadow: 0 2rpx 8rpx rgba(15, 23, 42, 0.03);
+  box-shadow: 0 4rpx 14rpx rgba(15, 23, 42, 0.03);
 }
 
 .metric-label {
@@ -56,12 +56,12 @@
 }
 
 .status-pass {
-  background: #f0fdf4;
-  border-color: #86efac;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
 }
 
 .status-pass .metric-val {
-  color: #16a34a;
+  color: #059669;
 }
 
 .status-fail {
@@ -143,8 +143,8 @@
 .ai-loading-box {
   background: #f5f3ff;
   border: 1rpx dashed #c7d2fe;
-  border-radius: 16rpx;
-  padding: 30rpx 20rpx;
+  border-radius: 20rpx;
+  padding: 36rpx 20rpx;
   text-align: center;
   margin-bottom: 24rpx;
 }
@@ -152,10 +152,10 @@
 .ai-box {
   background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
   border: 1rpx solid #ddd6fe;
-  border-radius: 16rpx;
+  border-radius: 20rpx;
   padding: 24rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 12rpx rgba(79, 70, 229, 0.05);
+  box-shadow: 0 4rpx 16rpx rgba(79, 70, 229, 0.06);
 }
 
 .ai-box-title {
@@ -193,6 +193,89 @@
   font-size: 26rpx;
   color: #64748b;
   line-height: 1.6;
+}
+
+/* 顺序 4：折叠卡片（其他：贴边与未达标指标） */
+.collapse-card {
+  padding: 24rpx 32rpx;
+  background: #ffffff;
+  border: 1rpx solid #e2e8f0;
+}
+
+.collapse-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collapse-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.collapse-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #475569;
+}
+
+.collapse-badge {
+  font-size: 20rpx;
+  background: #fef3c7;
+  color: #b45309;
+  border: 1rpx solid #fde68a;
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+}
+
+.collapse-arrow {
+  font-size: 24rpx;
+  color: #4f46e5;
+  font-weight: 500;
+}
+
+.collapse-body {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f1f5f9;
+}
+
+.sub-section-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #1e293b;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.violations-list {
+  background: #fef2f2;
+  border-radius: 14rpx;
+  padding: 16rpx 20rpx;
+}
+
+.violation-item {
+  font-size: 25rpx;
+  color: #991b1b;
+  margin-bottom: 8rpx;
+}
+
+.boundary-flags-list {
+  background: #fffbeb;
+  border-radius: 14rpx;
+  padding: 16rpx 20rpx;
+}
+
+.flag-item {
+  font-size: 24rpx;
+  color: #92400e;
+  margin-bottom: 8rpx;
+  line-height: 1.4;
+}
+
+.flag-label {
+  font-weight: 600;
 }
 
 /* 底部协议入口 */
