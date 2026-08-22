@@ -42,7 +42,7 @@
     </view>
 
     <text class="calc-standard-subtitle">
-      依据农业农村部《奶山羊饲养标准》（NY/T 2843-2015）
+      依据农业行业标准《奶山羊饲养管理技术规范》（NY/T 2835-2015）
     </text>
   </view>
 
@@ -305,7 +305,7 @@
         <view style="margin-top: 16rpx;">
           <text class="sub-section-title">优化算法机理</text>
           <text class="form-hint" style="line-height: 1.5; color: #64748b;">
-            系统严格按照《奶山羊饲养标准》（NY/T 2843-2015），在全项营养约束边界内使用单纯形法求解每日最低成本投喂组合。
+            系统严格按照《奶山羊饲养管理技术规范》（NY/T 2835-2015）及《肉羊营养需要量》（NY/T 816-2021），在全项营养约束边界内使用单纯形法求解每日最低成本投喂组合。
           </text>
         </view>
       </view>
@@ -319,7 +319,7 @@
 
     <!-- 底部服务协议与免责声明入口 -->
     <view class="footer-agreement" bindtap="openAgreementModal">
-      <text class="agreement-text">📖 依据《奶山羊饲养标准》（NY/T 2843-2015）计算</text>
+      <text class="agreement-text">📖 依据《奶山羊饲养管理技术规范》（NY/T 2835-2015）及营养标准计算</text>
       <text class="agreement-link">查看《用户服务协议与科学免责声明》</text>
     </view>
   </block>
@@ -335,7 +335,7 @@
         <view class="disclaimer-section">
           <text class="disclaimer-title">一、科学模型与计算依据</text>
           <text class="disclaimer-p">
-            本系统日粮配比模型严格依照农业农村部《奶山羊饲养标准》（NY/T 2843-2015）及《中国饲料成分及营养价值表》进行线性规划数学优化求解。
+            本系统日粮配比模型严格依照农业行业标准《奶山羊饲养管理技术规范》（NY/T 2835-2015）、《肉羊营养需要量》（NY/T 816-2021）及《中国饲料成分及营养价值表》，结合运筹学线性规划进行最低成本优化求解。
           </text>
         </view>
 
