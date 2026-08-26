@@ -1,15 +1,26 @@
 // miniprogram/pages/weigh/weigh.js
 import { bleClient, BLE_CONFIG, matchUUID } from '../../utils/ble.js';
 
+const app = getApp();
+
 Page({
   data: {
-    // 蓝牙状态
+    // 蓝牙连接状态
     connected: false,
     isConnecting: false,
     isScanning: false,
     connStateText: '未连接',
     connStateClass: 'disconnected',
     deviceId: '',
+
+    // 运行模式：'recipe' (配方流水线模式) | 'custom' (自由单次模式)
+    activeMode: 'recipe',
+
+    // 配方投喂任务队列
+    recipeFeedList: [],
+    currentFeedIndex: 0,
+    currentFeedItem: null,
+    completedCount: 0,
 
     // 称量与机器实时状态
     currentWeight: null,
@@ -19,7 +30,7 @@ Page({
     isOperating: false,
     isWeighingRunning: false,
 
-    // 称量参数输入
+    // 自由称量参数输入
     targetGrams: '15',
     toleranceGrams: '2',
     presetTargets: [5, 10, 15, 20, 50, 100, 200, 500],
@@ -39,19 +50,11 @@ Page({
   },
 
   onLoad(options) {
-    // 若从配方结果页跳转带入目标克数
-    if (options && options.target) {
-      const g = parseFloat(options.target);
-      if (!isNaN(g) && g > 0) {
-        this.setData({ targetGrams: String(Math.round(g)) });
-      }
-    }
-
+    this._initRecipeFeedQueue();
     this._setupBleCallbacks();
   },
 
   onShow() {
-    // 页面显示时同步连接状态
     this.setData({
       connected: bleClient.connected,
       deviceId: bleClient.deviceId || ''
@@ -62,8 +65,76 @@ Page({
   },
 
   onUnload() {
-    // 页面卸载时停止搜索
     bleClient.stopScan();
+  },
+
+  /**
+   * 初始化配方原料投喂队列
+   */
+  _initRecipeFeedQueue() {
+    const lastRes = app.globalData.lastResult;
+    if (lastRes && lastRes.feed_rows && Array.isArray(lastRes.feed_rows) && lastRes.feed_rows.length > 0) {
+      const list = lastRes.feed_rows.map((row, idx) => {
+        const kg = parseFloat(row.as_fed_kg) || 0;
+        const grams = Math.round(kg * 1000);
+        // 根据克数智能计算默认允许误差
+        let tol = 2;
+        if (grams >= 1000) tol = 10;
+        else if (grams >= 300) tol = 5;
+        else if (grams < 30) tol = 1;
+
+        return {
+          feed_id: row.feed_id || `feed_${idx}`,
+          name: row.name || '原料',
+          as_fed_kg: row.as_fed_kg,
+          target_g: grams > 0 ? grams : 15,
+          tolerance_g: tol,
+          status: 'pending', // 'pending' | 'done'
+          weighed_g: null,
+          diff_g: null
+        };
+      });
+
+      this.setData({
+        recipeFeedList: list,
+        currentFeedIndex: 0,
+        currentFeedItem: list[0],
+        completedCount: 0,
+        activeMode: 'recipe',
+        targetGrams: String(list[0].target_g),
+        toleranceGrams: String(list[0].tolerance_g)
+      });
+    } else {
+      // 无配方数据时，默认使用自由单次称量模式
+      this.setData({
+        recipeFeedList: [],
+        activeMode: 'custom'
+      });
+    }
+  },
+
+  /**
+   * 切换投喂模式 (配方流水线 VS 自由单次)
+   */
+  switchMode(e) {
+    const mode = e.currentTarget.dataset.mode;
+    this.setData({ activeMode: mode });
+  },
+
+  /**
+   * 选择队列中的某种原料
+   */
+  selectFeedRow(e) {
+    const idx = Number(e.currentTarget.dataset.index);
+    const item = this.data.recipeFeedList[idx];
+    if (!item) return;
+
+    this.setData({
+      currentFeedIndex: idx,
+      currentFeedItem: item,
+      targetGrams: String(item.target_g),
+      toleranceGrams: String(item.tolerance_g)
+    });
   },
 
   _setupBleCallbacks() {
@@ -91,7 +162,6 @@ Page({
       if (existingIdx >= 0) {
         list[existingIdx] = device;
       } else {
-        // 目标设备排在前面
         if (isTarget) {
           list.unshift(device);
         } else {
@@ -123,7 +193,7 @@ Page({
       };
 
       const logs = this.data.logs.concat(newLog);
-      if (logs.length > 60) logs.shift(); // 保持最新 60 条
+      if (logs.length > 60) logs.shift();
 
       this.setData({
         logs: logs,
@@ -225,12 +295,81 @@ Page({
           statusClass: data.result === 'pass' ? 'pass' : 'fail'
         });
 
-        // 震动提示
+        // 若处于配方流水线模式，自动更新队列项状态并推进下一步
+        if (this.data.activeMode === 'recipe' && this.data.recipeFeedList.length > 0) {
+          this._handleRecipeBatchItemDone(finalVal, diff);
+        }
+
         if (wx.vibrateShort) {
           wx.vibrateShort({ type: 'medium' });
         }
         break;
     }
+  },
+
+  /**
+   * 处理配方批次单项称量完成
+   */
+  _handleRecipeBatchItemDone(finalVal, diff) {
+    const list = this.data.recipeFeedList.slice();
+    const currIdx = this.data.currentFeedIndex;
+
+    if (list[currIdx]) {
+      list[currIdx].status = 'done';
+      list[currIdx].weighed_g = finalVal;
+      list[currIdx].diff_g = diff;
+    }
+
+    const completed = list.filter(item => item.status === 'done').length;
+
+    // 寻找下一个待称量的原料
+    let nextIdx = list.findIndex(item => item.status !== 'done');
+    let nextItem = nextIdx >= 0 ? list[nextIdx] : null;
+
+    this.setData({
+      recipeFeedList: list,
+      completedCount: completed,
+      currentFeedIndex: nextIdx >= 0 ? nextIdx : currIdx,
+      currentFeedItem: nextItem || list[currIdx],
+      targetGrams: nextItem ? String(nextItem.target_g) : this.data.targetGrams,
+      toleranceGrams: nextItem ? String(nextItem.tolerance_g) : this.data.toleranceGrams
+    });
+
+    if (completed === list.length) {
+      wx.showModal({
+        title: '🎉 配方投喂全部完成',
+        content: '恭喜！今日配方所有原料已全部精准称量投喂完毕。',
+        showCancel: false
+      });
+    } else if (nextItem) {
+      wx.showToast({
+        title: `请加入下一种原料【${nextItem.name}】`,
+        icon: 'none',
+        duration: 2500
+      });
+    }
+  },
+
+  /**
+   * 重置配方投喂批次
+   */
+  resetRecipeBatch() {
+    const list = this.data.recipeFeedList.map(item => ({
+      ...item,
+      status: 'pending',
+      weighed_g: null,
+      diff_g: null
+    }));
+
+    this.setData({
+      recipeFeedList: list,
+      currentFeedIndex: 0,
+      currentFeedItem: list[0],
+      completedCount: 0,
+      targetGrams: String(list[0].target_g),
+      toleranceGrams: String(list[0].tolerance_g)
+    });
+    wx.showToast({ title: '已重置投喂任务', icon: 'success' });
   },
 
   /**
@@ -325,13 +464,16 @@ Page({
     });
   },
 
-  // 3. 开始自动称量
-  handleStartWeighing() {
-    if (!this.data.connected) {
-      wx.showToast({ title: '请先连接称量仪', icon: 'none' });
-      return;
-    }
+  // 3. 开始自动称量当前配方原料
+  handleStartCurrentFeedWeighing() {
+    const item = this.data.currentFeedItem;
+    if (!item) return;
 
+    this.executeWeigh(item.target_g, item.tolerance_g, item.name);
+  },
+
+  // 4. 自由模式开始称量
+  handleStartWeighing() {
     const target = parseFloat(this.data.targetGrams);
     const tol = parseFloat(this.data.toleranceGrams);
 
@@ -344,26 +486,41 @@ Page({
       return;
     }
 
+    this.executeWeigh(target, tol, '物料');
+  },
+
+  /**
+   * 通用称量执行函数
+   */
+  executeWeigh(targetGrams, toleranceGrams, feedName = '原料') {
+    if (!this.data.connected) {
+      wx.showToast({ title: '请先连接称量仪', icon: 'none' });
+      return;
+    }
+
+    const target = parseFloat(targetGrams);
+    const tol = parseFloat(toleranceGrams);
+
     this.setData({
       isWeighingRunning: true,
       isOperating: true,
       lastDoneResult: null,
-      statusText: `启动称量: 目标 ${target}g (误差 ±${tol}g)`,
+      statusText: `启动称量【${feedName}】: 目标 ${target}g (误差 ±${tol}g)`,
       statusEmoji: '🚀',
       statusClass: 'operating'
     });
 
     bleClient.startWeighing(target, tol)
       .then(() => {
-        wx.showToast({ title: '称量指令已下发', icon: 'success' });
+        wx.showToast({ title: `【${feedName}】指令已下发`, icon: 'success' });
       })
       .catch((err) => {
         this.setData({ isWeighingRunning: false, isOperating: false });
-        wx.showToast({ title: err.message || '下发指令失败', icon: 'none' });
+        wx.showToast({ title: err.message || '下发指令失败', icon: 'none', duration: 2500 });
       });
   },
 
-  // 4. 实时读重
+  // 5. 实时读重
   handleReadWeight() {
     bleClient.readWeight()
       .then(() => {
@@ -374,7 +531,7 @@ Page({
       });
   },
 
-  // 5. 上方滑门开/关
+  // 6. 上方滑门开/关
   handleSlideOpen() {
     bleClient.controlSlide('open')
       .then(() => wx.showToast({ title: '滑门开启指令已发', icon: 'none' }))
@@ -386,7 +543,7 @@ Page({
       .catch(err => wx.showToast({ title: err.message, icon: 'none' }));
   },
 
-  // 6. 下方闸门开/关
+  // 7. 下方闸门开/关
   handleGateOpen() {
     bleClient.controlGate('open')
       .then(() => wx.showToast({ title: '闸门开启指令已发', icon: 'none' }))
@@ -398,7 +555,7 @@ Page({
       .catch(err => wx.showToast({ title: err.message, icon: 'none' }));
   },
 
-  // 7. 机器自检
+  // 8. 机器自检
   handleSelfTest() {
     wx.showLoading({ title: '自检指令发送中...' });
     bleClient.selfTest()

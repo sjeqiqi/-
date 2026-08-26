@@ -77,10 +77,109 @@
     </view>
   </view>
 
-  <!-- 2. 实时重量仪表盘 -->
+  <!-- 2. 模式切换分段器：配方投喂模式 VS 自由称量模式 -->
+  <view wx:if="{{recipeFeedList.length > 0}}" class="mode-segmented-card">
+    <view 
+      class="mode-seg-item {{activeMode === 'recipe' ? 'active' : ''}}" 
+      bindtap="switchMode" 
+      data-mode="recipe"
+    >
+      📋 日粮配方逐项称量 ({{completedCount}}/{{recipeFeedList.length}})
+    </view>
+    <view 
+      class="mode-seg-item {{activeMode === 'custom' ? 'active' : ''}}" 
+      bindtap="switchMode" 
+      data-mode="custom"
+    >
+      🎯 自定义/单次称量
+    </view>
+  </view>
+
+  <!-- 3. 配方投喂任务队列卡片（配方模式） -->
+  <view wx:if="{{activeMode === 'recipe' && recipeFeedList.length > 0}}" class="card-section recipe-station-card">
+    <view class="section-title-row">
+      <view>
+        <text class="section-title">🐐 日粮配方投喂流水线</text>
+        <text class="section-hint">点击选择原料 ➔ 手动加料进机 ➔ 自动精准称量</text>
+      </view>
+      <text class="recipe-progress-pill">{{completedCount}} / {{recipeFeedList.length}} 完成</text>
+    </view>
+
+    <!-- 原料列表 -->
+    <view class="recipe-queue-list">
+      <view 
+        wx:for="{{recipeFeedList}}" 
+        wx:key="feed_id" 
+        class="queue-item {{currentFeedIndex === index ? 'item-selected' : ''}} {{item.status === 'done' ? 'item-done' : ''}}"
+        bindtap="selectFeedRow"
+        data-index="{{index}}"
+      >
+        <view class="queue-item-left">
+          <view class="queue-index-badge {{item.status === 'done' ? 'badge-done' : (currentFeedIndex === index ? 'badge-active' : '')}}">
+            {{item.status === 'done' ? '✓' : (index + 1)}}
+          </view>
+          <view>
+            <view class="feed-name-row">
+              <text class="feed-item-name">{{item.name}}</text>
+              <text wx:if="{{item.status === 'done'}}" class="status-chip done">已完成</text>
+              <text wx:elif="{{currentFeedIndex === index}}" class="status-chip active">当前加料</text>
+              <text wx:else class="status-chip pending">待投喂</text>
+            </view>
+            <text class="feed-item-target">目标：{{item.target_g}} g ({{item.as_fed_kg}} kg/天)</text>
+          </view>
+        </view>
+
+        <view class="queue-item-right">
+          <block wx:if="{{item.status === 'done'}}">
+            <text class="feed-weighed-val">{{item.weighed_g}} g</text>
+            <text class="feed-diff-tag {{item.diff_g >= 0 ? 'plus' : 'minus'}}">
+              {{item.diff_g >= 0 ? '+' : ''}}{{item.diff_g}}g
+            </text>
+          </block>
+          <block wx:else>
+            <text class="btn-select-hint">{{currentFeedIndex === index ? '正在准备 ➔' : '切换投喂'}}</text>
+          </block>
+        </view>
+      </view>
+    </view>
+
+    <!-- 当前选中的投喂操作指引看板 -->
+    <view wx:if="{{currentFeedItem}}" class="current-action-banner">
+      <view class="action-banner-header">
+        <text class="action-banner-step">步骤 {{currentFeedIndex + 1}}</text>
+        <text class="action-banner-title">加料指引</text>
+      </view>
+      <view class="action-banner-content">
+        <text class="action-instruction">
+          👉 请手动将 <text class="highlight-name">【{{currentFeedItem.name}}】</text> 倒入上方料仓，目标设定为 <text class="highlight-grams">{{currentFeedItem.target_g}} g</text>
+        </text>
+      </view>
+
+      <!-- 快捷开始当前原料称量 -->
+      <button 
+        class="btn-start-weigh {{!connected ? 'disabled' : ''}}" 
+        bindtap="handleStartCurrentFeedWeighing" 
+        disabled="{{!connected || isWeighingRunning}}" 
+        loading="{{isWeighingRunning}}"
+      >
+        {{isWeighingRunning ? '正在自动称量【' + currentFeedItem.name + '】…' : '🚀 启动称量【' + currentFeedItem.name + '】(' + currentFeedItem.target_g + 'g)'}}
+      </button>
+    </view>
+
+    <!-- 全套配方称量完毕祝贺 -->
+    <view wx:if="{{completedCount === recipeFeedList.length && recipeFeedList.length > 0}}" class="all-done-banner">
+      <text class="all-done-title">🎉 今日配方全部原料已精准投喂完成！</text>
+      <text class="all-done-desc">日粮营养均衡达标，称量数据已核验</text>
+      <button class="btn-mini-read" style="margin-top: 14rpx;" bindtap="resetRecipeBatch">
+        重新投喂此配方
+      </button>
+    </view>
+  </view>
+
+  <!-- 4. 实时重量仪表盘 -->
   <view class="weight-dashboard-card">
     <view class="dashboard-header">
-      <text class="dashboard-title">⚖️ 实时称重数值</text>
+      <text class="dashboard-title">⚖️ 传感器实时称重数值</text>
       <button class="btn-mini-read" bindtap="handleReadWeight" disabled="{{!connected}}">
         立即测重
       </button>
@@ -101,7 +200,7 @@
     </view>
   </view>
 
-  <!-- 3. 称量结果大卡片（当收到 done 指令时展示） -->
+  <!-- 5. 称量结果大卡片（当收到 done 指令时展示） -->
   <view wx:if="{{lastDoneResult}}" class="done-result-card {{lastDoneResult.result === 'pass' ? 'result-pass' : (lastDoneResult.result === 'empty' ? 'result-empty' : 'result-fail')}}">
     <view class="done-header">
       <text class="done-title">
@@ -125,11 +224,11 @@
     </view>
   </view>
 
-  <!-- 4. 自动称量控制站 -->
-  <view class="card-section">
+  <!-- 6. 自定义单次称量控制面板（自由模式） -->
+  <view wx:if="{{activeMode === 'custom' || recipeFeedList.length === 0}}" class="card-section">
     <view class="section-title-row">
-      <text class="section-title">🎯 目标称量参数</text>
-      <text class="section-hint">输入克数与误差阈值</text>
+      <text class="section-title">🎯 自定义称量参数</text>
+      <text class="section-hint">自由输入克数与误差阈值</text>
     </view>
 
     <!-- 目标克数输入 -->
@@ -199,7 +298,7 @@
     </button>
   </view>
 
-  <!-- 5. 执行机构与手动调试面板 -->
+  <!-- 7. 执行机构与手动调试面板 -->
   <view class="card-section">
     <view class="section-title-row">
       <text class="section-title">🛠️ 执行机构手动控制</text>
@@ -250,7 +349,7 @@
     </view>
   </view>
 
-  <!-- 6. 实时通信数据包日志（可折叠） -->
+  <!-- 8. 实时通信数据包日志（可折叠） -->
   <view class="card-section log-section">
     <view class="log-header" bindtap="toggleLogs">
       <view class="log-title-row">
@@ -278,7 +377,7 @@
     </scroll-view>
   </view>
 
-  <!-- 7. 蓝牙连接排错指南弹窗 -->
+  <!-- 9. 蓝牙连接排错指南弹窗 -->
   <view wx:if="{{showTroubleModal}}" class="modal-mask" bindtap="closeTroubleModal">
     <view class="modal-content" catchtap="stopPropagation">
       <view class="modal-header">
@@ -303,7 +402,7 @@
         <view class="trouble-item">
           <text class="trouble-q">3. 🍓 确认树莓派 BLE GATT 服务正在运行</text>
           <text class="trouble-a">
-            确认树莓派 Python/Node 蓝牙脚本已启动并开启广播（Advertising），广播设备名称或本地名称需包含 weigh 或 weigh-machine。
+            确认树莓派 Python 蓝牙脚本已启动并开启广播（Advertising），广播设备名称或本地名称需包含 weigh 或 weigh-machine。
           </text>
         </view>
       </scroll-view>

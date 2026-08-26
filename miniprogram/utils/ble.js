@@ -95,6 +95,7 @@ export class BleWeighClient {
     this.deviceId = null;
     this.serviceId = null;
     this.writeCharId = null;
+    this.writeCharProps = {};
     this.notifyCharId = null;
     this.connected = false;
     this.connecting = false;
@@ -186,7 +187,7 @@ export class BleWeighClient {
 
           // 处理单个发现的设备
           const handleDiscoveredDevice = (dev) => {
-            const name = dev.name || dev.localName || '未知设备';
+            const name = dev.name || dev.localName || '未知名称设备';
             this.log('info', `发现设备: ${name} (${dev.deviceId}) RSSI: ${dev.RSSI}`);
 
             if (typeof this.onDeviceDiscovered === 'function') {
@@ -383,9 +384,10 @@ export class BleWeighClient {
           }
 
           this.writeCharId = writeChar.uuid;
+          this.writeCharProps = writeChar.properties || {};
           this.notifyCharId = notifyChar.uuid;
 
-          this.log('info', `已绑定特征值: Write=${this.writeCharId}, Notify=${this.notifyCharId}`);
+          this.log('info', `已绑定特征值: Write=${this.writeCharId} (props=${JSON.stringify(this.writeCharProps)}), Notify=${this.notifyCharId}`);
 
           // 开启特征值订阅
           this._enableNotification()
@@ -529,20 +531,46 @@ export class BleWeighClient {
   }
 
   /**
-   * 分包写入数据（确保在低版本 BLE 协议下不超 20 字节 MTU 限制）
+   * 分包写入数据，并提供 write / writeNoResponse 模式自动重试兜底（彻底杜绝 GATT ERR）
    */
   _writeBufferInChunks(buffer, chunkSize = 20) {
     return new Promise((resolve, reject) => {
       const totalBytes = buffer.byteLength;
-      if (totalBytes <= chunkSize) {
-        wx.writeBLECharacteristicValue({
-          deviceId: this.deviceId,
-          serviceId: this.serviceId,
-          characteristicId: this.writeCharId,
-          value: buffer,
-          success: resolve,
-          fail: (err) => reject(new Error(err.errMsg || '写入指令失败'))
+
+      // 确定首选与备选写入模式
+      const preferNoResp = this.writeCharProps && this.writeCharProps.writeNoResponse && !this.writeCharProps.write;
+      const primaryType = preferNoResp ? 'writeNoResponse' : 'write';
+      const fallbackType = preferNoResp ? 'write' : 'writeNoResponse';
+
+      const writeChunk = (chunkBuf) => {
+        return new Promise((chunkResolve, chunkReject) => {
+          const attempt = (wType, isRetry = false) => {
+            wx.writeBLECharacteristicValue({
+              deviceId: this.deviceId,
+              serviceId: this.serviceId,
+              characteristicId: this.writeCharId,
+              value: chunkBuf,
+              writeType: wType,
+              success: (res) => {
+                chunkResolve(res);
+              },
+              fail: (err) => {
+                if (!isRetry) {
+                  this.log('info', `指令写入(${wType})遇到底层响应异常(${err.errMsg})，自动切换 ${fallbackType} 模式重试…`);
+                  setTimeout(() => attempt(fallbackType, true), 30);
+                } else {
+                  chunkReject(new Error(err.errMsg || '写入指令失败(GATT ERR)'));
+                }
+              }
+            });
+          };
+
+          attempt(primaryType, false);
         });
+      };
+
+      if (totalBytes <= chunkSize) {
+        writeChunk(buffer).then(resolve).catch(reject);
         return;
       }
 
@@ -555,17 +583,12 @@ export class BleWeighClient {
         const currentChunkSize = Math.min(chunkSize, totalBytes - offset);
         const subBuffer = buffer.slice(offset, offset + currentChunkSize);
         
-        wx.writeBLECharacteristicValue({
-          deviceId: this.deviceId,
-          serviceId: this.serviceId,
-          characteristicId: this.writeCharId,
-          value: subBuffer,
-          success: () => {
+        writeChunk(subBuffer)
+          .then(() => {
             offset += currentChunkSize;
-            setTimeout(sendNextChunk, 20); // 间隔 20ms 避免拥塞
-          },
-          fail: (err) => reject(new Error(err.errMsg || '写入指令分包失败'))
-        });
+            setTimeout(sendNextChunk, 25); // 间隔 25ms 避免拥塞
+          })
+          .catch(reject);
       };
 
       sendNextChunk();
