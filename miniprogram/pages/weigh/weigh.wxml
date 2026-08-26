@@ -1,18 +1,18 @@
 <!-- miniprogram/pages/weigh/weigh.wxml -->
 <view class="weigh-container">
   
-  <!-- 1. 顶部蓝牙连接卡片 -->
+  <!-- 1. 顶部蓝牙连接状态卡片 -->
   <view class="device-card">
     <view class="device-info-left">
       <view class="device-name-row">
-        <text class="device-title">{{connected ? 'weigh-machine' : '未连接称量仪器'}}</text>
+        <text class="device-title">{{connected ? 'weigh-machine' : '称量仪器'}}</text>
         <view class="status-pill {{connStateClass}}">
           <view class="pulse-dot"></view>
           <text>{{connStateText}}</text>
         </view>
       </view>
       <text class="device-subtext">
-        {{connected ? ('设备ID: ' + deviceId) : '树莓派 BLE 智能称量外设'}}
+        {{connected ? ('设备ID: ' + deviceId) : '树莓派 BLE 智能称重外设'}}
       </text>
     </view>
 
@@ -23,15 +23,57 @@
         bindtap="handleScanAndConnect" 
         loading="{{isScanning || isConnecting}}"
       >
-        {{isScanning ? '搜索中...' : (isConnecting ? '连接中...' : '搜索连接')}}
+        {{isScanning ? '正在搜索…' : (isConnecting ? '连接中…' : '搜索连接')}}
       </button>
       <button 
         wx:else 
         class="btn-disconnect" 
         bindtap="handleDisconnect"
       >
-        断开
+        断开连接
       </button>
+    </view>
+  </view>
+
+  <!-- 搜索中的设备快捷选择面板 (如果搜索到设备或正在搜索) -->
+  <view wx:if="{{!connected && (isScanning || discoveredDevices.length > 0)}}" class="card-section scan-devices-box">
+    <view class="section-title-row">
+      <text class="section-title" style="font-size: 26rpx;">🔍 附近发现的蓝牙设备 ({{discoveredDevices.length}})</text>
+      <text wx:if="{{isScanning}}" class="scanning-tip-text">扫描中…</text>
+    </view>
+
+    <view wx:if="{{discoveredDevices.length === 0}}" class="scan-loading-tip">
+      <view class="status-spinner" style="border-top-color: #38bdf8;"></view>
+      <text style="margin-left: 14rpx; font-size: 24rpx; color: #94a3b8;">正在扫描附近的蓝牙广播，请靠近树莓派…</text>
+    </view>
+
+    <view class="discovered-list">
+      <view 
+        wx:for="{{discoveredDevices}}" 
+        wx:key="deviceId" 
+        class="discovered-item" 
+        bindtap="selectConnectDevice" 
+        data-device-id="{{item.deviceId}}"
+      >
+        <view class="discovered-item-left">
+          <view class="dev-name-wrap">
+            <text class="dev-name">{{item.name || item.localName || '未知名称设备'}}</text>
+            <text wx:if="{{item.isTarget}}" class="target-tag">推荐目标</text>
+          </view>
+          <text class="dev-mac">{{item.deviceId}}</text>
+        </view>
+        <view class="discovered-item-right">
+          <text class="dev-rssi">信号 {{item.RSSI}} dBm</text>
+          <button class="btn-item-connect" catchtap="selectConnectDevice" data-device-id="{{item.deviceId}}">
+            连接
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 排错提示 -->
+    <view class="ble-help-tip" bindtap="openTroubleshootingModal">
+      <text>❓ 搜不到设备？点击查看排错指引（安卓定位/系统配对）</text>
     </view>
   </view>
 
@@ -236,34 +278,40 @@
     </scroll-view>
   </view>
 
-  <!-- 7. 搜索到的设备选择弹窗（若周围有多个蓝牙设备） -->
-  <view wx:if="{{showDeviceModal}}" class="modal-mask" bindtap="closeDeviceModal">
+  <!-- 7. 蓝牙连接排错指南弹窗 -->
+  <view wx:if="{{showTroubleModal}}" class="modal-mask" bindtap="closeTroubleModal">
     <view class="modal-content" catchtap="stopPropagation">
       <view class="modal-header">
-        <text class="modal-title">发现蓝牙设备 ({{discoveredDevices.length}})</text>
-        <text class="modal-close" bindtap="closeDeviceModal">✕</text>
+        <text class="modal-title">💡 蓝牙搜索连接排错指引</text>
+        <text class="modal-close" bindtap="closeTroubleModal">✕</text>
       </view>
-      <scroll-view scroll-y class="modal-device-list">
-        <view wx:if="{{discoveredDevices.length === 0}}" class="log-empty">
-          正在搜索附近的蓝牙设备…
+      <scroll-view scroll-y class="modal-body">
+        <view class="trouble-item">
+          <text class="trouble-q">1. ⚠️ 千万不要在手机系统蓝牙设置中手动配对</text>
+          <text class="trouble-a">
+            如果在手机【设置➔蓝牙】中点击配对了树莓派，手机系统会独占连接并停止广播，导致微信小程序无法搜到。请前往手机系统蓝牙设置，点击树莓派设备并选择【忽略此设备/取消配对】，然后在小程序内直接点击【搜索连接】。
+          </text>
         </view>
-        <view 
-          wx:for="{{discoveredDevices}}" 
-          wx:key="deviceId" 
-          class="device-list-item" 
-          bindtap="selectConnectDevice" 
-          data-device-id="{{item.deviceId}}"
-        >
-          <view class="device-list-name">
-            <text class="name">{{item.name || item.localName || '未知设备'}}</text>
-            <text class="mac">{{item.deviceId}}</text>
-          </view>
-          <view class="device-list-rssi">
-            <text>信号: {{item.RSSI}} dBm</text>
-            <text class="btn-list-connect">连接</text>
-          </view>
+
+        <view class="trouble-item">
+          <text class="trouble-q">2. 📍 安卓手机请务必开启手机「位置信息(GPS)」</text>
+          <text class="trouble-a">
+            安卓系统底层规定扫描 BLE 蓝牙外设必须打开手机下拉菜单中的【位置信息/GPS 开关】，并且在微信权限管理中允许【位置信息】和【附近设备】权限。
+          </text>
+        </view>
+
+        <view class="trouble-item">
+          <text class="trouble-q">3. 🍓 确认树莓派 BLE GATT 服务正在运行</text>
+          <text class="trouble-a">
+            确认树莓派 Python/Node 蓝牙脚本已启动并开启广播（Advertising），广播设备名称或本地名称需包含 weigh 或 weigh-machine。
+          </text>
         </view>
       </scroll-view>
+      <view class="modal-footer">
+        <button class="btn-start-weigh" style="height: 80rpx; font-size: 28rpx; margin-top: 0;" bindtap="closeTroubleModal">
+          我知道了，重新搜索
+        </button>
+      </view>
     </view>
   </view>
 

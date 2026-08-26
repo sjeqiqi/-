@@ -1,5 +1,5 @@
 // miniprogram/pages/weigh/weigh.js
-import { bleClient, BLE_CONFIG } from '../../utils/ble.js';
+import { bleClient, BLE_CONFIG, matchUUID } from '../../utils/ble.js';
 
 Page({
   data: {
@@ -33,9 +33,9 @@ Page({
     logs: [],
     lastLogId: '',
 
-    // 多设备搜索弹窗
-    showDeviceModal: false,
-    discoveredDevices: []
+    // 设备搜索与排错
+    discoveredDevices: [],
+    showTroubleModal: false
   },
 
   onLoad(options) {
@@ -79,14 +79,38 @@ Page({
 
     // 3. 监听搜索到的设备
     bleClient.onDeviceDiscovered = (device) => {
-      const list = this.data.discoveredDevices;
-      if (!list.find(d => d.deviceId === device.deviceId)) {
-        list.push(device);
-        this.setData({ discoveredDevices: list });
+      const list = this.data.discoveredDevices.slice();
+      const existingIdx = list.findIndex(d => d.deviceId === device.deviceId);
+      
+      const devName = (device.name || device.localName || '').toLowerCase();
+      const isTarget = devName.includes('weigh') || devName.includes('raspberry') || devName.includes('scale') ||
+                       (device.advertisServiceUUIDs && device.advertisServiceUUIDs.some(u => matchUUID(u, BLE_CONFIG.SERVICE_UUID)));
+      
+      device.isTarget = !!isTarget;
+
+      if (existingIdx >= 0) {
+        list[existingIdx] = device;
+      } else {
+        // 目标设备排在前面
+        if (isTarget) {
+          list.unshift(device);
+        } else {
+          list.push(device);
+        }
+      }
+      this.setData({ discoveredDevices: list });
+    };
+
+    // 4. 搜索超时提醒
+    bleClient.onScanTimeout = () => {
+      if (this.data.discoveredDevices.length === 0) {
+        this.setData({ showTroubleModal: true });
+      } else {
+        wx.showToast({ title: '已列出附近发现的设备，请点击连接', icon: 'none', duration: 2500 });
       }
     };
 
-    // 4. 监听通信日志
+    // 5. 监听通信日志
     bleClient.onLog = (type, msg) => {
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
@@ -279,15 +303,11 @@ Page({
     bleClient.startScan(BLE_CONFIG.DEVICE_NAME)
       .then(() => {
         wx.hideLoading();
-        wx.showToast({ title: '搜索中,请靠近设备', icon: 'none' });
+        wx.showToast({ title: '已启动搜索，请靠近设备', icon: 'none' });
       })
       .catch((err) => {
         wx.hideLoading();
-        wx.showModal({
-          title: '蓝牙连接提示',
-          content: err.message || '请确保手机蓝牙已打开，且已授权微信使用蓝牙定位权限。',
-          showCancel: false
-        });
+        this.setData({ showTroubleModal: true });
       });
   },
 
@@ -417,16 +437,26 @@ Page({
     wx.showToast({ title: '日志已清空', icon: 'none' });
   },
 
-  // 设备弹窗选择
+  // 手动点击列表中搜索到的设备连接
   selectConnectDevice(e) {
     const devId = e.currentTarget.dataset.deviceId;
-    this.setData({ showDeviceModal: false });
-    bleClient.connect(devId).catch(err => {
-      wx.showToast({ title: err.message || '连接失败', icon: 'none' });
-    });
+    wx.showLoading({ title: '正在连接设备…' });
+    bleClient.connect(devId)
+      .then(() => {
+        wx.hideLoading();
+        wx.showToast({ title: '连接成功！', icon: 'success' });
+      })
+      .catch(err => {
+        wx.hideLoading();
+        wx.showToast({ title: err.message || '连接失败', icon: 'none', duration: 2500 });
+      });
   },
-  closeDeviceModal() {
-    this.setData({ showDeviceModal: false });
+
+  openTroubleshootingModal() {
+    this.setData({ showTroubleModal: true });
+  },
+  closeTroubleModal() {
+    this.setData({ showTroubleModal: false });
   },
   stopPropagation() {}
 });

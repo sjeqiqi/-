@@ -21,7 +21,7 @@ export const BLE_CONFIG = {
  */
 export function matchUUID(uuid1, uuid2) {
   if (!uuid1 || !uuid2) return false;
-  return uuid1.replace(/-/g, '').toLowerCase() === uuid2.replace(/-/g, '').toLowerCase();
+  return String(uuid1).replace(/-/g, '').toLowerCase() === String(uuid2).replace(/-/g, '').toLowerCase();
 }
 
 /**
@@ -102,12 +102,14 @@ export class BleWeighClient {
     
     // 粘包/拆包数据缓存
     this._rxBuffer = '';
+    this._scanTimeoutTimer = null;
 
     // 回调列表
     this.onStateChange = null;     // (state, detail) => {}
     this.onDataReceived = null;    // (parsedJson, rawStr) => {}
     this.onDeviceDiscovered = null;// (device) => {}
     this.onLog = null;             // (type, msg) => {}  'tx' | 'rx' | 'info' | 'error'
+    this.onScanTimeout = null;     // () => {}
   }
 
   log(type, msg) {
@@ -131,9 +133,9 @@ export class BleWeighClient {
         fail: (err) => {
           this.log('error', `初始化蓝牙失败: ${err.errMsg || JSON.stringify(err)}`);
           if (err.errCode === 10001) {
-            reject(new Error('请打开手机系统蓝牙并授权微信使用蓝牙'));
+            reject(new Error('请打开手机系统蓝牙并开启微信蓝牙授权'));
           } else {
-            reject(new Error(err.errMsg || '蓝牙不可用'));
+            reject(new Error(err.errMsg || '蓝牙初始化不可用'));
           }
         }
       });
@@ -150,47 +152,100 @@ export class BleWeighClient {
   }
 
   /**
+   * 检查是否为目标称量仪
+   */
+  _isTargetDevice(dev, filterName) {
+    const name = (dev.name || dev.localName || '').toLowerCase();
+    const target = (filterName || BLE_CONFIG.DEVICE_NAME).toLowerCase();
+
+    // 1. 匹配设备名是否包含 weigh-machine 或 weigh 或 raspberry
+    if (name.includes(target) || name.includes('weigh') || name.includes('raspberry') || name.includes('scale')) {
+      return true;
+    }
+
+    // 2. 匹配广播服务 UUID 是否包含目标服务
+    if (dev.advertisServiceUUIDs && Array.isArray(dev.advertisServiceUUIDs)) {
+      if (dev.advertisServiceUUIDs.some(u => matchUUID(u, BLE_CONFIG.SERVICE_UUID))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * 开始搜索称量仪器 (weigh-machine)
    */
-  startScan(filterName = BLE_CONFIG.DEVICE_NAME) {
+  startScan(filterName = BLE_CONFIG.DEVICE_NAME, timeoutMs = 12000) {
     return new Promise((resolve, reject) => {
+      if (this._scanTimeoutTimer) clearTimeout(this._scanTimeoutTimer);
+
       this.init()
         .then(() => {
           this.scanning = true;
-          this._updateState('scanning', '正在搜索称量仪器…');
+          this._updateState('scanning', '正在搜索附近的称量仪器…');
 
-          // 监听搜索到的设备
+          // 处理单个发现的设备
+          const handleDiscoveredDevice = (dev) => {
+            const name = dev.name || dev.localName || '未知设备';
+            this.log('info', `发现设备: ${name} (${dev.deviceId}) RSSI: ${dev.RSSI}`);
+
+            if (typeof this.onDeviceDiscovered === 'function') {
+              this.onDeviceDiscovered(dev);
+            }
+
+            // 命中目标设备自动连接
+            if (this._isTargetDevice(dev, filterName) && !this.connected && !this.connecting) {
+              this.log('info', `🎯 匹配到目标称量仪器 [${name}]，正在发起自动连接…`);
+              this.connect(dev.deviceId).catch(err => {
+                this.log('error', `自动连接失败: ${err.message}`);
+              });
+            }
+          };
+
+          // 1. 监听新广播设备
           wx.onBluetoothDeviceFound((res) => {
-            res.devices.forEach((dev) => {
-              const name = dev.name || dev.localName || '';
-              if (name) {
-                this.log('info', `发现设备: ${name} (${dev.deviceId}) RSSI: ${dev.RSSI}`);
-              }
-              if (typeof this.onDeviceDiscovered === 'function') {
-                this.onDeviceDiscovered(dev);
-              }
-              // 自动匹配设备名
-              if (filterName && name.toLowerCase().includes(filterName.toLowerCase())) {
-                this.log('info', `匹配到目标称量仪: ${name}，准备连接`);
-                this.connect(dev.deviceId).catch(err => {
-                  this.log('error', `自动连接失败: ${err.message}`);
-                });
-              }
-            });
+            if (res && res.devices) {
+              res.devices.forEach(handleDiscoveredDevice);
+            }
           });
 
-          // 启动搜索
+          // 2. 启动搜索（不过滤 serviceId 以便兼容所有广播格式）
           wx.startBluetoothDevicesDiscovery({
             allowDuplicatesKey: false,
-            interval: 300,
+            interval: 200,
             success: (res) => {
-              this.log('info', '蓝牙搜索已启动');
+              this.log('info', '蓝牙低功耗搜索已成功启动');
+
+              // 立即查询系统已连接或缓存设备（防止设备已被系统连接而漏扫）
+              setTimeout(() => {
+                if (wx.getBluetoothDevices) {
+                  wx.getBluetoothDevices({
+                    success: (dRes) => {
+                      if (dRes && dRes.devices) {
+                        dRes.devices.forEach(handleDiscoveredDevice);
+                      }
+                    }
+                  });
+                }
+              }, 400);
+
+              // 设置超时定时器
+              this._scanTimeoutTimer = setTimeout(() => {
+                if (this.scanning && !this.connected && !this.connecting) {
+                  this.log('info', '搜索达到超时时间，停止主动扫描');
+                  this.stopScan();
+                  if (typeof this.onScanTimeout === 'function') {
+                    this.onScanTimeout();
+                  }
+                }
+              }, timeoutMs);
+
               resolve(res);
             },
             fail: (err) => {
               this.scanning = false;
               this._updateState('idle', '搜索启动失败');
-              reject(new Error(err.errMsg || '启动搜索失败'));
+              reject(new Error(err.errMsg || '启动搜索失败，请检查定位或蓝牙权限'));
             }
           });
         })
@@ -202,6 +257,10 @@ export class BleWeighClient {
    * 停止搜索
    */
   stopScan() {
+    if (this._scanTimeoutTimer) {
+      clearTimeout(this._scanTimeoutTimer);
+      this._scanTimeoutTimer = null;
+    }
     return new Promise((resolve) => {
       this.scanning = false;
       wx.stopBluetoothDevicesDiscovery({
@@ -232,7 +291,7 @@ export class BleWeighClient {
           this.log('info', `已建立物理连接: ${this.deviceId}`);
           this._listenConnectionState();
 
-          // 尝试设置 MTU（Android 支持）
+          // 尝试协商 MTU（Android 提升传输效率）
           if (wx.setBLEMTU) {
             wx.setBLEMTU({
               deviceId: this.deviceId,
@@ -249,8 +308,8 @@ export class BleWeighClient {
           this.connecting = false;
           this.connected = false;
           this._updateState('disconnected', '连接失败');
-          this.log('error', `连接设备失败: ${err.errMsg}`);
-          reject(new Error(err.errMsg || '连接失败'));
+          this.log('error', `连接设备失败: ${err.errMsg || JSON.stringify(err)}`);
+          reject(new Error(err.errMsg || '连接失败，请确认设备距离且未被其他手机连接'));
         }
       });
     });
@@ -261,18 +320,18 @@ export class BleWeighClient {
    */
   _discoverServicesAndChars() {
     return new Promise((resolve, reject) => {
-      // 延时 300ms 保证连接稳定后再查服务
+      // 延时 400ms 保证连接彻底稳定后再查服务
       setTimeout(() => {
         wx.getBLEDeviceServices({
           deviceId: this.deviceId,
           success: (res) => {
             this.log('info', `发现服务列表 (${res.services.length}个): ${JSON.stringify(res.services.map(s => s.uuid))}`);
             
-            // 匹配目标服务 UUID，若未找到则默认取首个主服务或全特征值扫描
+            // 匹配目标服务 UUID，若未找到则默认取首个主服务或包含特征值的服务
             let targetService = res.services.find(s => matchUUID(s.uuid, BLE_CONFIG.SERVICE_UUID));
             if (!targetService && res.services.length > 0) {
               targetService = res.services.find(s => s.isPrimary) || res.services[0];
-              this.log('info', `未精确匹配到设定服务UUID，使用可用服务: ${targetService.uuid}`);
+              this.log('info', `未精确匹配到设定服务UUID，使用设备可用主服务: ${targetService.uuid}`);
             }
 
             if (!targetService) {
@@ -289,7 +348,7 @@ export class BleWeighClient {
             reject(new Error(err.errMsg || '获取服务列表失败'));
           }
         });
-      }, 300);
+      }, 400);
     });
   }
 
@@ -326,7 +385,7 @@ export class BleWeighClient {
           this.writeCharId = writeChar.uuid;
           this.notifyCharId = notifyChar.uuid;
 
-          this.log('info', `绑定特征值: Write=${this.writeCharId}, Notify=${this.notifyCharId}`);
+          this.log('info', `已绑定特征值: Write=${this.writeCharId}, Notify=${this.notifyCharId}`);
 
           // 开启特征值订阅
           this._enableNotification()
@@ -334,7 +393,7 @@ export class BleWeighClient {
               this.connecting = false;
               this.connected = true;
               this._updateState('connected', '已成功连接称量仪器');
-              this.log('info', '称量仪器准备就绪，已开启数据监听');
+              this.log('info', '称量仪器准备就绪，已开启数据双向通信');
               resolve();
             })
             .catch(reject);
@@ -574,6 +633,10 @@ export class BleWeighClient {
    * 断开蓝牙连接
    */
   disconnect() {
+    if (this._scanTimeoutTimer) {
+      clearTimeout(this._scanTimeoutTimer);
+      this._scanTimeoutTimer = null;
+    }
     if (this.deviceId) {
       wx.closeBLEConnection({
         deviceId: this.deviceId,
