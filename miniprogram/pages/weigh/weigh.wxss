@@ -1075,3 +1075,72 @@ page {
   color: #cbd5e1;
   display: block;
 }
+
+/* 称量结果状态专属颜色与芯片 */
+.status-chip.fail {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1rpx solid rgba(239, 68, 68, 0.4);
+}
+
+.status-chip.empty {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1rpx solid rgba(245, 158, 11, 0.4);
+}
+
+.queue-index-badge.badge-fail {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.queue-index-badge.badge-empty {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.queue-item.item-fail {
+  border-color: #ef4444;
+  background: rgba(127, 29, 29, 0.15);
+}
+
+.queue-item.item-empty {
+  border-color: #f59e0b;
+  background: rgba(120, 53, 15, 0.15);
+}
+
+.feed-weighed-val.val-fail {
+  color: #f87171;
+}
+
+.feed-weighed-val.val-empty {
+  color: #fbbf24;
+}
+
+.metric-val.val-fail {
+  color: #f87171 !important;
+}
+
+.metric-val.val-empty {
+  color: #fbbf24 !important;
+}
+
+.metric-val.plus {
+  color: #f87171;
+}
+
+.metric-val.minus {
+  color: #fbbf24;
+}
+
+.feed-diff-tag.plus {
+  color: #f87171;
+}
+
+.feed-diff-tag.minus {
+  color: #fbbf24;
+}
+
+.feed-diff-tag.zero {
+  color: #34d399;
+}

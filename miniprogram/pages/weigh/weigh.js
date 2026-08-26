@@ -333,14 +333,30 @@ Page({
         break;
 
       case 'done':
-        // 称量完成上报 {"type":"done","result":"pass","target":15,"final":15.2}
+        // 称量完成上报 {"type":"done","result":"fail","target":3.9,"final":9.84}
         const finalVal = parseFloat(data.final) || 0;
         const targetVal = parseFloat(data.target) || 0;
         const diff = Number((finalVal - targetVal).toFixed(2));
+        const resKey = String(data.result || 'pass').toLowerCase().trim();
 
+        let sText = `称量完成（合格）：${finalVal}g`;
+        let sEmoji = '🎉';
+        let sClass = 'pass';
+
+        if (resKey === 'fail') {
+          sText = `称量完成（超差）：实称 ${finalVal}g (目标 ${targetVal}g, 偏差 ${diff >= 0 ? '+' : ''}${diff}g)`;
+          sEmoji = '❌';
+          sClass = 'fail';
+        } else if (resKey === 'empty') {
+          sText = `称量中断：料仓缺料/已空 (实称 ${finalVal}g)`;
+          sEmoji = '⚠️';
+          sClass = 'empty';
+        }
+
+        // 无论 result 为何值，必须立即终止称量转圈并更新状态
         this.setData({
           lastDoneResult: {
-            result: data.result || 'pass',
+            result: resKey,
             target: targetVal,
             final: finalVal,
             diff: diff
@@ -348,32 +364,34 @@ Page({
           currentWeight: finalVal.toFixed(2),
           isWeighingRunning: false,
           isOperating: false,
-          statusText: data.result === 'pass' ? '称量完成（合格）' : (data.result === 'empty' ? '料仓已空，未达目标' : '称量完成（超差）'),
-          statusEmoji: data.result === 'pass' ? '🎉' : '⚠️',
-          statusClass: data.result === 'pass' ? 'pass' : 'fail'
+          statusText: sText,
+          statusEmoji: sEmoji,
+          statusClass: sClass
         });
 
-        // 若处于配方流水线模式，自动更新队列项状态并推进下一步
+        // 若处于配方流水线模式，更新队列项状态并推进下一步
         if (this.data.activeMode === 'recipe' && this.data.recipeFeedList.length > 0) {
-          this._handleRecipeBatchItemDone(finalVal, diff);
+          this._handleRecipeBatchItemDone(finalVal, diff, resKey);
         }
 
         if (wx.vibrateShort) {
-          wx.vibrateShort({ type: 'medium' });
+          wx.vibrateShort({ type: resKey === 'pass' ? 'medium' : 'heavy' });
         }
         break;
     }
   },
 
   /**
-   * 处理配方批次单项称量完成
+   * 处理配方批次单项称量完成 (支持 pass / fail / empty 全状态)
    */
-  _handleRecipeBatchItemDone(finalVal, diff) {
+  _handleRecipeBatchItemDone(finalVal, diff, resultKey = 'pass') {
     const list = this.data.recipeFeedList.slice();
     const currIdx = this.data.currentFeedIndex;
+    const currFeed = list[currIdx];
 
-    if (list[currIdx]) {
+    if (currFeed) {
       list[currIdx].status = 'done';
+      list[currIdx].result = resultKey;
       list[currIdx].weighed_g = finalVal;
       list[currIdx].diff_g = diff;
     }
@@ -389,20 +407,30 @@ Page({
       currentFeedIndex: nextIdx >= 0 ? nextIdx : currIdx,
       currentFeedItem: nextItem || list[currIdx],
       targetGrams: nextItem ? String(nextItem.target_g) : this.data.targetGrams,
-      toleranceGrams: nextItem ? String(nextItem.tolerance_g) : this.data.toleranceGrams
+      toleranceGrams: nextItem ? String(nextItem.tolerance_g) : this.data.toleranceGrams,
+      isWeighingRunning: false,
+      isOperating: false
     });
 
     if (completed === list.length) {
       wx.showModal({
         title: '🎉 配方投喂全部完成',
-        content: '今日配方所有原料已全部按 Demo 比例精准称量投喂完毕。',
+        content: '今日配方所有原料已全部完成称量投喂。',
         showCancel: false
       });
     } else if (nextItem) {
+      const feedName = currFeed ? currFeed.name : '当前原料';
+      let tipMsg = `【${feedName}】合格！请加下一种【${nextItem.name}】`;
+      if (resultKey === 'fail') {
+        tipMsg = `【${feedName}】超差！已记录，请加下一种【${nextItem.name}】`;
+      } else if (resultKey === 'empty') {
+        tipMsg = `【${feedName}】缺料！已记录，请加下一种【${nextItem.name}】`;
+      }
+
       wx.showToast({
-        title: `请加入下一种原料【${nextItem.name}】`,
+        title: tipMsg,
         icon: 'none',
-        duration: 2500
+        duration: 3000
       });
     }
   },

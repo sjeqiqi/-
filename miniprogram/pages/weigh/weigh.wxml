@@ -129,18 +129,20 @@
       <view 
         wx:for="{{recipeFeedList}}" 
         wx:key="feed_id" 
-        class="queue-item {{currentFeedIndex === index ? 'item-selected' : ''}} {{item.status === 'done' ? 'item-done' : ''}}"
+        class="queue-item {{currentFeedIndex === index ? 'item-selected' : ''}} {{item.status === 'done' ? ('item-' + (item.result || 'done')) : ''}}"
         bindtap="selectFeedRow"
         data-index="{{index}}"
       >
         <view class="queue-item-left">
-          <view class="queue-index-badge {{item.status === 'done' ? 'badge-done' : (currentFeedIndex === index ? 'badge-active' : '')}}">
-            {{item.status === 'done' ? '✓' : (index + 1)}}
+          <view class="queue-index-badge {{item.status === 'done' ? ('badge-' + (item.result || 'done')) : (currentFeedIndex === index ? 'badge-active' : '')}}">
+            {{item.status === 'done' ? (item.result === 'pass' ? '✓' : (item.result === 'empty' ? '!' : '✕')) : (index + 1)}}
           </view>
           <view>
             <view class="feed-name-row">
               <text class="feed-item-name">{{item.name}}</text>
-              <text wx:if="{{item.status === 'done'}}" class="status-chip done">已完成</text>
+              <text wx:if="{{item.result === 'pass'}}" class="status-chip done">已合格</text>
+              <text wx:elif="{{item.result === 'fail'}}" class="status-chip fail">超差</text>
+              <text wx:elif="{{item.result === 'empty'}}" class="status-chip empty">缺料</text>
               <text wx:elif="{{currentFeedIndex === index}}" class="status-chip active">当前加料</text>
               <text wx:else class="status-chip pending">待投喂</text>
             </view>
@@ -152,8 +154,8 @@
 
         <view class="queue-item-right">
           <block wx:if="{{item.status === 'done'}}">
-            <text class="feed-weighed-val">{{item.weighed_g}} g</text>
-            <text class="feed-diff-tag {{item.diff_g >= 0 ? 'plus' : 'minus'}}">
+            <text class="feed-weighed-val {{item.result === 'fail' ? 'val-fail' : (item.result === 'empty' ? 'val-empty' : '')}}">{{item.weighed_g}} g</text>
+            <text class="feed-diff-tag {{item.diff_g > 0 ? 'plus' : (item.diff_g < 0 ? 'minus' : 'zero')}}">
               {{item.diff_g >= 0 ? '+' : ''}}{{item.diff_g}}g
             </text>
           </block>
@@ -227,7 +229,7 @@
       <text class="done-title">
         {{lastDoneResult.result === 'pass' ? '🎉 称量达标（合格）' : (lastDoneResult.result === 'empty' ? '⚠️ 料仓缺料/已空' : '❌ 称量超差（不合格）')}}
       </text>
-      <text class="done-tag">{{lastDoneResult.result.toUpperCase()}}</text>
+      <text class="done-tag">{{lastDoneResult.result ? lastDoneResult.result.toUpperCase() : 'DONE'}}</text>
     </view>
     <view class="done-metrics-grid">
       <view class="done-metric-col">
@@ -236,11 +238,11 @@
       </view>
       <view class="done-metric-col">
         <text class="metric-key">最终实际重量</text>
-        <text class="metric-val highlight">{{lastDoneResult.final}} g</text>
+        <text class="metric-val highlight {{lastDoneResult.result === 'fail' ? 'val-fail' : (lastDoneResult.result === 'empty' ? 'val-empty' : '')}}">{{lastDoneResult.final}} g</text>
       </view>
       <view class="done-metric-col">
-        <text class="metric-key">实际误差</text>
-        <text class="metric-val">{{lastDoneResult.diff >= 0 ? '+' : ''}}{{lastDoneResult.diff}} g</text>
+        <text class="metric-key">实际偏差</text>
+        <text class="metric-val {{lastDoneResult.diff != 0 ? (lastDoneResult.diff > 0 ? 'plus' : 'minus') : ''}}">{{lastDoneResult.diff >= 0 ? '+' : ''}}{{lastDoneResult.diff}} g</text>
       </view>
     </view>
   </view>
