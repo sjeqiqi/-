@@ -336,64 +336,45 @@ Page({
         // 称量完成上报 {"type":"done","result":"fail","target":3.9,"final":9.84}
         const finalVal = parseFloat(data.final) || 0;
         const targetVal = parseFloat(data.target) || 0;
-        const diff = Number((finalVal - targetVal).toFixed(2));
-        const resKey = String(data.result || 'pass').toLowerCase().trim();
 
-        let sText = `称量完成（合格）：${finalVal}g`;
-        let sEmoji = '🎉';
-        let sClass = 'pass';
-
-        if (resKey === 'fail') {
-          sText = `称量完成（超差）：实称 ${finalVal}g (目标 ${targetVal}g, 偏差 ${diff >= 0 ? '+' : ''}${diff}g)`;
-          sEmoji = '❌';
-          sClass = 'fail';
-        } else if (resKey === 'empty') {
-          sText = `称量中断：料仓缺料/已空 (实称 ${finalVal}g)`;
-          sEmoji = '⚠️';
-          sClass = 'empty';
-        }
-
-        // 无论 result 为何值，必须立即终止称量转圈并更新状态
+        // 统一展示为积极的完成状态（DEMO 原型机容差提示）
         this.setData({
           lastDoneResult: {
-            result: resKey,
+            result: 'done',
             target: targetVal,
-            final: finalVal,
-            diff: diff
+            final: finalVal
           },
           currentWeight: finalVal.toFixed(2),
           isWeighingRunning: false,
           isOperating: false,
-          statusText: sText,
-          statusEmoji: sEmoji,
-          statusClass: sClass
+          statusText: `称量完成（实测 ${finalVal}g）`,
+          statusEmoji: '🎉',
+          statusClass: 'pass'
         });
 
         // 若处于配方流水线模式，更新队列项状态并推进下一步
         if (this.data.activeMode === 'recipe' && this.data.recipeFeedList.length > 0) {
-          this._handleRecipeBatchItemDone(finalVal, diff, resKey);
+          this._handleRecipeBatchItemDone(finalVal);
         }
 
         if (wx.vibrateShort) {
-          wx.vibrateShort({ type: resKey === 'pass' ? 'medium' : 'heavy' });
+          wx.vibrateShort({ type: 'medium' });
         }
         break;
     }
   },
 
   /**
-   * 处理配方批次单项称量完成 (支持 pass / fail / empty 全状态)
+   * 处理配方批次单项称量完成 (统一勾选完成，贴合 DEMO 原型机演示)
    */
-  _handleRecipeBatchItemDone(finalVal, diff, resultKey = 'pass') {
+  _handleRecipeBatchItemDone(finalVal) {
     const list = this.data.recipeFeedList.slice();
     const currIdx = this.data.currentFeedIndex;
     const currFeed = list[currIdx];
 
     if (currFeed) {
       list[currIdx].status = 'done';
-      list[currIdx].result = resultKey;
       list[currIdx].weighed_g = finalVal;
-      list[currIdx].diff_g = diff;
     }
 
     const completed = list.filter(item => item.status === 'done').length;
@@ -420,17 +401,10 @@ Page({
       });
     } else if (nextItem) {
       const feedName = currFeed ? currFeed.name : '当前原料';
-      let tipMsg = `【${feedName}】合格！请加下一种【${nextItem.name}】`;
-      if (resultKey === 'fail') {
-        tipMsg = `【${feedName}】超差！已记录，请加下一种【${nextItem.name}】`;
-      } else if (resultKey === 'empty') {
-        tipMsg = `【${feedName}】缺料！已记录，请加下一种【${nextItem.name}】`;
-      }
-
       wx.showToast({
-        title: tipMsg,
+        title: `【${feedName}】已完成！请加下一种【${nextItem.name}】`,
         icon: 'none',
-        duration: 3000
+        duration: 2500
       });
     }
   },

@@ -1144,3 +1144,19 @@ page {
 .feed-diff-tag.zero {
   color: #34d399;
 }
+
+/* DEMO 容差温馨说明条 */
+.demo-tolerance-note {
+  margin-top: 18rpx;
+  padding: 12rpx 16rpx;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1rpx dashed rgba(56, 189, 248, 0.3);
+  border-radius: 12rpx;
+  text-align: center;
+}
+
+.demo-note-text {
+  font-size: 21rpx;
+  color: #94a3b8;
+  line-height: 1.4;
+}
