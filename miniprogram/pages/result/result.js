@@ -207,5 +207,18 @@ Page({
 
   handleEditAnimal() {
     wx.navigateBack({ delta: 2 });
+  },
+
+  handleOpenWeighStation() {
+    let defaultGrams = 15;
+    if (this.data.result && this.data.result.feed_rows && this.data.result.feed_rows.length > 0) {
+      const kg = parseFloat(this.data.result.feed_rows[0].as_fed_kg);
+      if (!isNaN(kg) && kg > 0) {
+        defaultGrams = Math.round(kg * 1000);
+      }
+    }
+    wx.navigateTo({
+      url: `/pages/weigh/weigh?target=${defaultGrams}`
+    });
   }
 });

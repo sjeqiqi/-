@@ -1,0 +1,270 @@
+<!-- miniprogram/pages/weigh/weigh.wxml -->
+<view class="weigh-container">
+  
+  <!-- 1. 顶部蓝牙连接卡片 -->
+  <view class="device-card">
+    <view class="device-info-left">
+      <view class="device-name-row">
+        <text class="device-title">{{connected ? 'weigh-machine' : '未连接称量仪器'}}</text>
+        <view class="status-pill {{connStateClass}}">
+          <view class="pulse-dot"></view>
+          <text>{{connStateText}}</text>
+        </view>
+      </view>
+      <text class="device-subtext">
+        {{connected ? ('设备ID: ' + deviceId) : '树莓派 BLE 智能称量外设'}}
+      </text>
+    </view>
+
+    <view class="device-action-right">
+      <button 
+        wx:if="{{!connected}}" 
+        class="btn-connect {{isScanning ? 'scanning' : ''}}" 
+        bindtap="handleScanAndConnect" 
+        loading="{{isScanning || isConnecting}}"
+      >
+        {{isScanning ? '搜索中...' : (isConnecting ? '连接中...' : '搜索连接')}}
+      </button>
+      <button 
+        wx:else 
+        class="btn-disconnect" 
+        bindtap="handleDisconnect"
+      >
+        断开
+      </button>
+    </view>
+  </view>
+
+  <!-- 2. 实时重量仪表盘 -->
+  <view class="weight-dashboard-card">
+    <view class="dashboard-header">
+      <text class="dashboard-title">⚖️ 实时称重数值</text>
+      <button class="btn-mini-read" bindtap="handleReadWeight" disabled="{{!connected}}">
+        立即测重
+      </button>
+    </view>
+
+    <view class="weight-meter-wrap">
+      <text class="weight-number">{{currentWeight !== null ? currentWeight : '--'}}</text>
+      <text class="weight-unit">g</text>
+    </view>
+
+    <!-- 运行状态指示条 -->
+    <view class="status-indicator-bar {{statusClass}}">
+      <view class="status-icon-wrap">
+        <view class="status-spinner" wx:if="{{isOperating}}"></view>
+        <text class="status-emoji" wx:else>{{statusEmoji}}</text>
+      </view>
+      <text class="status-message">{{statusText}}</text>
+    </view>
+  </view>
+
+  <!-- 3. 称量结果大卡片（当收到 done 指令时展示） -->
+  <view wx:if="{{lastDoneResult}}" class="done-result-card {{lastDoneResult.result === 'pass' ? 'result-pass' : (lastDoneResult.result === 'empty' ? 'result-empty' : 'result-fail')}}">
+    <view class="done-header">
+      <text class="done-title">
+        {{lastDoneResult.result === 'pass' ? '🎉 称量达标（合格）' : (lastDoneResult.result === 'empty' ? '⚠️ 料仓缺料/已空' : '❌ 称量超差（不合格）')}}
+      </text>
+      <text class="done-tag">{{lastDoneResult.result.toUpperCase()}}</text>
+    </view>
+    <view class="done-metrics-grid">
+      <view class="done-metric-col">
+        <text class="metric-key">目标重量</text>
+        <text class="metric-val">{{lastDoneResult.target}} g</text>
+      </view>
+      <view class="done-metric-col">
+        <text class="metric-key">最终实际重量</text>
+        <text class="metric-val highlight">{{lastDoneResult.final}} g</text>
+      </view>
+      <view class="done-metric-col">
+        <text class="metric-key">实际误差</text>
+        <text class="metric-val">{{lastDoneResult.diff >= 0 ? '+' : ''}}{{lastDoneResult.diff}} g</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 4. 自动称量控制站 -->
+  <view class="card-section">
+    <view class="section-title-row">
+      <text class="section-title">🎯 目标称量参数</text>
+      <text class="section-hint">输入克数与误差阈值</text>
+    </view>
+
+    <!-- 目标克数输入 -->
+    <view class="form-item">
+      <view class="form-label-row">
+        <text class="form-label">目标重量 (g)</text>
+        <text class="form-val-hint">单位：克 (g)</text>
+      </view>
+      <input 
+        class="weigh-input" 
+        type="digit" 
+        placeholder="请输入目标克数，例如 15" 
+        value="{{targetGrams}}" 
+        bindinput="onTargetGramsInput" 
+        disabled="{{isWeighingRunning}}"
+      />
+      <!-- 快捷预设芯片 -->
+      <view class="preset-chips-scroll">
+        <view 
+          wx:for="{{presetTargets}}" 
+          wx:key="*this" 
+          class="preset-chip {{targetGrams == item ? 'active' : ''}}" 
+          bindtap="selectPresetTarget" 
+          data-val="{{item}}"
+        >
+          {{item}}g
+        </view>
+      </view>
+    </view>
+
+    <!-- 允许误差输入 -->
+    <view class="form-item">
+      <view class="form-label-row">
+        <text class="form-label">允许误差 (±g)</text>
+        <text class="form-val-hint">默认 ±2g</text>
+      </view>
+      <input 
+        class="weigh-input" 
+        type="digit" 
+        placeholder="例如 2" 
+        value="{{toleranceGrams}}" 
+        bindinput="onToleranceInput" 
+        disabled="{{isWeighingRunning}}"
+      />
+      <!-- 快捷误差芯片 -->
+      <view class="preset-chips-scroll">
+        <view 
+          wx:for="{{presetTolerances}}" 
+          wx:key="*this" 
+          class="preset-chip {{toleranceGrams == item ? 'active' : ''}}" 
+          bindtap="selectPresetTolerance" 
+          data-val="{{item}}"
+        >
+          ±{{item}}g
+        </view>
+      </view>
+    </view>
+
+    <!-- 开始称量大按钮 -->
+    <button 
+      class="btn-start-weigh {{!connected ? 'disabled' : ''}}" 
+      bindtap="handleStartWeighing" 
+      disabled="{{!connected || isWeighingRunning}}" 
+      loading="{{isWeighingRunning}}"
+    >
+      {{isWeighingRunning ? '自动称量执行中…' : '🚀 开始自动称量 (Weigh)'}}
+    </button>
+  </view>
+
+  <!-- 5. 执行机构与手动调试面板 -->
+  <view class="card-section">
+    <view class="section-title-row">
+      <text class="section-title">🛠️ 执行机构手动控制</text>
+      <text class="section-hint">闸门 / 滑门 / 自检</text>
+    </view>
+
+    <!-- 上方滑门 -->
+    <view class="actuator-row">
+      <view class="actuator-info">
+        <text class="actuator-name">上方滑门 (Slide Gate)</text>
+        <text class="actuator-desc">控制上方原料进料下落</text>
+      </view>
+      <view class="actuator-btns">
+        <button class="btn-actuator open" bindtap="handleSlideOpen" disabled="{{!connected}}">
+          打开滑门
+        </button>
+        <button class="btn-actuator close" bindtap="handleSlideClose" disabled="{{!connected}}">
+          关闭滑门
+        </button>
+      </view>
+    </view>
+
+    <!-- 下方闸门 -->
+    <view class="actuator-row">
+      <view class="actuator-info">
+        <text class="actuator-name">下方闸门 (Discharge Gate)</text>
+        <text class="actuator-desc">控制称量斗向料槽放料</text>
+      </view>
+      <view class="actuator-btns">
+        <button class="btn-actuator open" bindtap="handleGateOpen" disabled="{{!connected}}">
+          打开闸门
+        </button>
+        <button class="btn-actuator close" bindtap="handleGateClose" disabled="{{!connected}}">
+          关闭闸门
+        </button>
+      </view>
+    </view>
+
+    <!-- 整机自检 -->
+    <view class="actuator-row" style="border-bottom: none; padding-bottom: 0;">
+      <view class="actuator-info">
+        <text class="actuator-name">整机系统自检 (Self-Test)</text>
+        <text class="actuator-desc">电机、传感器与通信链路校验</text>
+      </view>
+      <button class="btn-actuator selftest" bindtap="handleSelfTest" disabled="{{!connected}}">
+        ⚡ 机器自检
+      </button>
+    </view>
+  </view>
+
+  <!-- 6. 实时通信数据包日志（可折叠） -->
+  <view class="card-section log-section">
+    <view class="log-header" bindtap="toggleLogs">
+      <view class="log-title-row">
+        <text class="section-title" style="font-size: 26rpx; margin-bottom: 0;">📡 BLE 实时通信数据包日志</text>
+        <text class="log-count-badge">{{logs.length}}</text>
+      </view>
+      <view class="log-actions">
+        <text class="log-clear-link" catchtap="clearLogs">清空</text>
+        <text class="log-arrow">{{showLogs ? '▲' : '▼'}}</text>
+      </view>
+    </view>
+
+    <scroll-view wx:if="{{showLogs}}" scroll-y class="log-scroll-view" scroll-into-view="{{lastLogId}}">
+      <view wx:if="{{logs.length === 0}}" class="log-empty">暂无通信数据包</view>
+      <view 
+        wx:for="{{logs}}" 
+        wx:key="id" 
+        id="{{item.id}}" 
+        class="log-item {{item.type}}"
+      >
+        <text class="log-time">{{item.time}}</text>
+        <text class="log-tag">[{{item.type.toUpperCase()}}]</text>
+        <text class="log-msg">{{item.msg}}</text>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 7. 搜索到的设备选择弹窗（若周围有多个蓝牙设备） -->
+  <view wx:if="{{showDeviceModal}}" class="modal-mask" bindtap="closeDeviceModal">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">发现蓝牙设备 ({{discoveredDevices.length}})</text>
+        <text class="modal-close" bindtap="closeDeviceModal">✕</text>
+      </view>
+      <scroll-view scroll-y class="modal-device-list">
+        <view wx:if="{{discoveredDevices.length === 0}}" class="log-empty">
+          正在搜索附近的蓝牙设备…
+        </view>
+        <view 
+          wx:for="{{discoveredDevices}}" 
+          wx:key="deviceId" 
+          class="device-list-item" 
+          bindtap="selectConnectDevice" 
+          data-device-id="{{item.deviceId}}"
+        >
+          <view class="device-list-name">
+            <text class="name">{{item.name || item.localName || '未知设备'}}</text>
+            <text class="mac">{{item.deviceId}}</text>
+          </view>
+          <view class="device-list-rssi">
+            <text>信号: {{item.RSSI}} dBm</text>
+            <text class="btn-list-connect">连接</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+</view>

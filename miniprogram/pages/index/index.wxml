@@ -127,4 +127,16 @@
       <button class="btn-primary" bindtap="handleNext">下一步：选择原料与价格 ➔</button>
     </view>
   </view>
+
+  <!-- 智能硬件控制入口 -->
+  <view class="weigh-entry-card" bindtap="goToWeighPage">
+    <view class="weigh-entry-left">
+      <text class="weigh-entry-icon">⚖️</text>
+      <view>
+        <text class="weigh-entry-title">自动称量仪器控制台</text>
+        <text class="weigh-entry-desc">树莓派 BLE 智能称重 · 远程配料与闸门控制</text>
+      </view>
+    </view>
+    <text class="weigh-entry-arrow">➔</text>
+  </view>
 </view>

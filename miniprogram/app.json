@@ -2,7 +2,8 @@
   "pages": [
     "pages/index/index",
     "pages/feeds/feeds",
-    "pages/result/result"
+    "pages/result/result",
+    "pages/weigh/weigh"
   ],
   "window": {
     "backgroundTextStyle": "light",

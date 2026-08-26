@@ -137,6 +137,13 @@
       <text class="form-hint" style="margin-top: 16rpx;">
         总干物质 {{result.totals.dm_kg}} kg/天，占目标采食量 ({{result.dmi_target_kg}} kg) 的 {{result.nutrients.dmi_pct_of_target}}%
       </text>
+
+      <!-- 智能硬件称量入口 -->
+      <view style="margin-top: 20rpx;">
+        <button class="btn-weigh-link" bindtap="handleOpenWeighStation">
+          ⚖️ 启动自动称量仪器精准投喂 ➔
+        </button>
+      </view>
     </view>
 
     <!-- ============================================ -->

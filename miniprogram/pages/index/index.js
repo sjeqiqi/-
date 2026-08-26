@@ -101,5 +101,11 @@ Page({
     wx.navigateTo({
       url: '/pages/feeds/feeds'
     });
+  },
+
+  goToWeighPage() {
+    wx.navigateTo({
+      url: '/pages/weigh/weigh'
+    });
   }
 });
