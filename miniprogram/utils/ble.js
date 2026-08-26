@@ -284,18 +284,8 @@ export class BleWeighClient {
         success: (res) => {
           this.log('info', `已建立物理连接: ${this.deviceId}`);
           this._listenConnectionState();
-
-          if (wx.setBLEMTU) {
-            wx.setBLEMTU({
-              deviceId: this.deviceId,
-              mtu: 512,
-              complete: () => {
-                this._discoverServicesAndChars().then(resolve).catch(reject);
-              }
-            });
-          } else {
-            this._discoverServicesAndChars().then(resolve).catch(reject);
-          }
+          // 无任何配对/bonding/加密协商操作，直接纯净发现服务
+          this._discoverServicesAndChars().then(resolve).catch(reject);
         },
         fail: (err) => {
           this.connecting = false;
