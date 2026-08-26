@@ -16,13 +16,25 @@ Page({
     // 运行模式：'recipe' (配方流水线模式) | 'custom' (自由单次模式)
     activeMode: 'recipe',
 
+    // 🔬 DEMO 演示机等比缩放配置 (0~50g 传感器)
+    scaleOptions: [
+      { key: '100', label: '1:100 (Demo推荐)', ratio: 0.01 },
+      { key: '50', label: '1:50', ratio: 0.02 },
+      { key: '20', label: '1:20', ratio: 0.05 },
+      { key: '10', label: '1:10', ratio: 0.1 },
+      { key: '1', label: '1:1 (原比例)', ratio: 1.0 }
+    ],
+    currentScaleKey: '100',
+    currentScaleRatio: 0.01,
+    currentScaleLabel: '1:100 等比缩小',
+
     // 配方投喂任务队列
     recipeFeedList: [],
     currentFeedIndex: 0,
     currentFeedItem: null,
     completedCount: 0,
 
-    // 称量与机器实时状态
+    // 称量与机器实时状态 (0~50g)
     currentWeight: null,
     statusText: '待机就绪 (等待连接)',
     statusEmoji: '💤',
@@ -30,11 +42,11 @@ Page({
     isOperating: false,
     isWeighingRunning: false,
 
-    // 自由称量参数输入
+    // 自由称量参数输入 (0~50g Demo)
     targetGrams: '15',
-    toleranceGrams: '2',
-    presetTargets: [5, 10, 15, 20, 50, 100, 200, 500],
-    presetTolerances: [1, 2, 3, 5],
+    toleranceGrams: '1',
+    presetTargets: [2, 5, 10, 15, 20, 25, 30, 40, 50],
+    presetTolerances: [0.5, 1, 2, 3],
 
     // 完成结果
     lastDoneResult: null,
@@ -69,27 +81,33 @@ Page({
   },
 
   /**
-   * 初始化配方原料投喂队列
+   * 初始化配方原料投喂队列（带 DEMO 0~50g 等比缩小）
    */
   _initRecipeFeedQueue() {
     const lastRes = app.globalData.lastResult;
     if (lastRes && lastRes.feed_rows && Array.isArray(lastRes.feed_rows) && lastRes.feed_rows.length > 0) {
+      const ratio = this.data.currentScaleRatio;
+
       const list = lastRes.feed_rows.map((row, idx) => {
         const kg = parseFloat(row.as_fed_kg) || 0;
-        const grams = Math.round(kg * 1000);
-        // 根据克数智能计算默认允许误差
-        let tol = 2;
-        if (grams >= 1000) tol = 10;
-        else if (grams >= 300) tol = 5;
-        else if (grams < 30) tol = 1;
+        const rawGrams = Math.round(kg * 1000);
+        
+        // 按倍率等比缩小（保留 1 位小数，最小 0.5g）
+        const scaledGrams = Math.max(0.5, Number((rawGrams * ratio).toFixed(1)));
+        
+        // 演示量程下的合理误差 (0~50g 传感器一般设定 ±0.5g ~ ±1.0g)
+        let tol = 1.0;
+        if (scaledGrams <= 5) tol = 0.5;
+        else if (scaledGrams >= 30) tol = 2.0;
 
         return {
           feed_id: row.feed_id || `feed_${idx}`,
           name: row.name || '原料',
           as_fed_kg: row.as_fed_kg,
-          target_g: grams > 0 ? grams : 15,
+          raw_g: rawGrams,
+          target_g: scaledGrams,
           tolerance_g: tol,
-          status: 'pending', // 'pending' | 'done'
+          status: 'pending',
           weighed_g: null,
           diff_g: null
         };
@@ -105,12 +123,52 @@ Page({
         toleranceGrams: String(list[0].tolerance_g)
       });
     } else {
-      // 无配方数据时，默认使用自由单次称量模式
       this.setData({
         recipeFeedList: [],
         activeMode: 'custom'
       });
     }
+  },
+
+  /**
+   * 用户选择切换等比缩放倍率
+   */
+  selectScaleRatio(e) {
+    const key = e.currentTarget.dataset.key;
+    const opt = this.data.scaleOptions.find(o => o.key === key);
+    if (!opt) return;
+
+    const ratio = opt.ratio;
+    const list = this.data.recipeFeedList.map(item => {
+      const scaledGrams = Math.max(0.5, Number((item.raw_g * ratio).toFixed(1)));
+      let tol = 1.0;
+      if (scaledGrams <= 5) tol = 0.5;
+      else if (scaledGrams >= 30) tol = 2.0;
+
+      return {
+        ...item,
+        target_g: scaledGrams,
+        tolerance_g: tol
+      };
+    });
+
+    const currIdx = this.data.currentFeedIndex;
+    const currItem = list[currIdx] || list[0];
+
+    this.setData({
+      currentScaleKey: key,
+      currentScaleRatio: ratio,
+      currentScaleLabel: opt.label,
+      recipeFeedList: list,
+      currentFeedItem: currItem,
+      targetGrams: String(currItem.target_g),
+      toleranceGrams: String(currItem.tolerance_g)
+    });
+
+    wx.showToast({
+      title: `已切换为 ${opt.label}`,
+      icon: 'none'
+    });
   },
 
   /**
@@ -322,7 +380,6 @@ Page({
 
     const completed = list.filter(item => item.status === 'done').length;
 
-    // 寻找下一个待称量的原料
     let nextIdx = list.findIndex(item => item.status !== 'done');
     let nextItem = nextIdx >= 0 ? list[nextIdx] : null;
 
@@ -338,7 +395,7 @@ Page({
     if (completed === list.length) {
       wx.showModal({
         title: '🎉 配方投喂全部完成',
-        content: '恭喜！今日配方所有原料已全部精准称量投喂完毕。',
+        content: '今日配方所有原料已全部按 Demo 比例精准称量投喂完毕。',
         showCancel: false
       });
     } else if (nextItem) {

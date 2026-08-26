@@ -12,7 +12,7 @@
         </view>
       </view>
       <text class="device-subtext">
-        {{connected ? ('设备ID: ' + deviceId) : '树莓派 BLE 智能称重外设'}}
+        {{connected ? ('设备ID: ' + deviceId) : '树莓派 BLE 智能称重外设 (0~50g DEMO)'}}
       </text>
     </view>
 
@@ -105,6 +105,25 @@
       <text class="recipe-progress-pill">{{completedCount}} / {{recipeFeedList.length}} 完成</text>
     </view>
 
+    <!-- 🔬 DEMO 演示机等比缩放控制条 (适配 0~50g 称重传感器) -->
+    <view class="scale-selector-wrap">
+      <view class="scale-header">
+        <text class="scale-title">🔬 DEMO 演示等比缩放 (0~50g 量程)</text>
+        <text class="scale-current-badge">{{currentScaleLabel}}</text>
+      </view>
+      <view class="scale-chips-row">
+        <view 
+          wx:for="{{scaleOptions}}" 
+          wx:key="key" 
+          class="scale-chip {{currentScaleKey === item.key ? 'active' : ''}}" 
+          bindtap="selectScaleRatio" 
+          data-key="{{item.key}}"
+        >
+          {{item.label}}
+        </view>
+      </view>
+    </view>
+
     <!-- 原料列表 -->
     <view class="recipe-queue-list">
       <view 
@@ -125,7 +144,9 @@
               <text wx:elif="{{currentFeedIndex === index}}" class="status-chip active">当前加料</text>
               <text wx:else class="status-chip pending">待投喂</text>
             </view>
-            <text class="feed-item-target">目标：{{item.target_g}} g ({{item.as_fed_kg}} kg/天)</text>
+            <text class="feed-item-target">
+              Demo目标：<text class="feed-target-highlight">{{item.target_g}} g</text> (原配方 {{item.as_fed_kg}} kg/天)
+            </text>
           </view>
         </view>
 
@@ -151,7 +172,7 @@
       </view>
       <view class="action-banner-content">
         <text class="action-instruction">
-          👉 请手动将 <text class="highlight-name">【{{currentFeedItem.name}}】</text> 倒入上方料仓，目标设定为 <text class="highlight-grams">{{currentFeedItem.target_g}} g</text>
+          👉 请手动将 <text class="highlight-name">【{{currentFeedItem.name}}】</text> 倒入上方料仓，Demo 目标设定为 <text class="highlight-grams">{{currentFeedItem.target_g}} g</text> (误差 ±{{currentFeedItem.tolerance_g}}g)
         </text>
       </view>
 
@@ -179,7 +200,7 @@
   <!-- 4. 实时重量仪表盘 -->
   <view class="weight-dashboard-card">
     <view class="dashboard-header">
-      <text class="dashboard-title">⚖️ 传感器实时称重数值</text>
+      <text class="dashboard-title">⚖️ 传感器实时称重数值 (0~50g)</text>
       <button class="btn-mini-read" bindtap="handleReadWeight" disabled="{{!connected}}">
         立即测重
       </button>
@@ -227,7 +248,7 @@
   <!-- 6. 自定义单次称量控制面板（自由模式） -->
   <view wx:if="{{activeMode === 'custom' || recipeFeedList.length === 0}}" class="card-section">
     <view class="section-title-row">
-      <text class="section-title">🎯 自定义称量参数</text>
+      <text class="section-title">🎯 自定义称量参数 (0~50g Demo)</text>
       <text class="section-hint">自由输入克数与误差阈值</text>
     </view>
 
@@ -235,7 +256,7 @@
     <view class="form-item">
       <view class="form-label-row">
         <text class="form-label">目标重量 (g)</text>
-        <text class="form-val-hint">单位：克 (g)</text>
+        <text class="form-val-hint">量程：0 ~ 50 g</text>
       </view>
       <input 
         class="weigh-input" 
@@ -263,12 +284,12 @@
     <view class="form-item">
       <view class="form-label-row">
         <text class="form-label">允许误差 (±g)</text>
-        <text class="form-val-hint">默认 ±2g</text>
+        <text class="form-val-hint">默认 ±1g</text>
       </view>
       <input 
         class="weigh-input" 
         type="digit" 
-        placeholder="例如 2" 
+        placeholder="例如 1" 
         value="{{toleranceGrams}}" 
         bindinput="onToleranceInput" 
         disabled="{{isWeighingRunning}}"
@@ -371,7 +392,7 @@
         class="log-item {{item.type}}"
       >
         <text class="log-time">{{item.time}}</text>
-        <text class="log-tag">[{{item.type.toUpperCase()}}]</text>
+        <text class="log-tag">[{{item.type}}]</text>
         <text class="log-msg">{{item.msg}}</text>
       </view>
     </scroll-view>

@@ -819,6 +819,65 @@ page {
   border-radius: 12rpx;
 }
 
+/* 🔬 DEMO 等比缩放选择条 */
+.scale-selector-wrap {
+  background: #0f172a;
+  border: 1rpx solid #334155;
+  border-radius: 18rpx;
+  padding: 18rpx 20rpx;
+  margin-top: 10rpx;
+  margin-bottom: 20rpx;
+}
+
+.scale-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.scale-title {
+  font-size: 23rpx;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.scale-current-badge {
+  font-size: 20rpx;
+  color: #34d399;
+  font-weight: 700;
+}
+
+.scale-chips-row {
+  display: flex;
+  gap: 10rpx;
+  flex-wrap: wrap;
+}
+
+.scale-chip {
+  font-size: 22rpx;
+  color: #94a3b8;
+  background: #1e293b;
+  border: 1rpx solid #334155;
+  padding: 6rpx 18rpx;
+  border-radius: 12rpx;
+  transition: all 0.2s ease;
+}
+
+.scale-chip.active {
+  color: #0f172a;
+  background: #34d399;
+  border-color: #34d399;
+  font-weight: 700;
+  box-shadow: 0 2rpx 8rpx rgba(52, 211, 153, 0.4);
+}
+
+.feed-target-highlight {
+  color: #34d399;
+  font-weight: 700;
+  font-size: 26rpx;
+}
+
 .recipe-queue-list {
   display: flex;
   flex-direction: column;
