@@ -40,16 +40,12 @@ Page({
     statusEmoji: '💤',
     statusClass: 'idle',
     isOperating: false,
-    isWeighingRunning: false,
 
     // 自由称量参数输入 (0~50g Demo)
     targetGrams: '15',
     toleranceGrams: '1',
     presetTargets: [2, 5, 10, 15, 20, 25, 30, 40, 50],
     presetTolerances: [0.5, 1, 2, 3],
-
-    // 完成结果
-    lastDoneResult: null,
 
     // 通信日志
     showLogs: false,
@@ -95,7 +91,6 @@ Page({
         // 按倍率等比缩小（保留 1 位小数，最小 0.5g）
         const scaledGrams = Math.max(0.5, Number((rawGrams * ratio).toFixed(1)));
         
-        // 演示量程下的合理误差 (0~50g 传感器一般设定 ±0.5g ~ ±1.0g)
         let tol = 1.0;
         if (scaledGrams <= 5) tol = 0.5;
         else if (scaledGrams >= 30) tol = 2.0;
@@ -108,8 +103,7 @@ Page({
           target_g: scaledGrams,
           tolerance_g: tol,
           status: 'pending',
-          weighed_g: null,
-          diff_g: null
+          weighed_g: null
         };
       });
 
@@ -295,8 +289,7 @@ Page({
           statusText: '称量仪器已断开连接',
           statusEmoji: '🔴',
           statusClass: 'idle',
-          isOperating: false,
-          isWeighingRunning: false
+          isOperating: false
         });
         break;
       default:
@@ -333,79 +326,19 @@ Page({
         break;
 
       case 'done':
-        // 称量完成上报 {"type":"done","result":"fail","target":3.9,"final":9.84}
+        // 称量完成上报
         const finalVal = parseFloat(data.final) || 0;
-        const targetVal = parseFloat(data.target) || 0;
-
-        // 统一展示为积极的完成状态（DEMO 原型机容差提示）
         this.setData({
-          lastDoneResult: {
-            result: 'done',
-            target: targetVal,
-            final: finalVal
-          },
           currentWeight: finalVal.toFixed(2),
-          isWeighingRunning: false,
           isOperating: false,
-          statusText: `称量完成（实测 ${finalVal}g）`,
-          statusEmoji: '🎉',
-          statusClass: 'pass'
+          statusText: `称量动作完成，就绪`,
+          statusEmoji: '✅',
+          statusClass: 'idle'
         });
-
-        // 若处于配方流水线模式，更新队列项状态并推进下一步
-        if (this.data.activeMode === 'recipe' && this.data.recipeFeedList.length > 0) {
-          this._handleRecipeBatchItemDone(finalVal);
-        }
-
         if (wx.vibrateShort) {
           wx.vibrateShort({ type: 'medium' });
         }
         break;
-    }
-  },
-
-  /**
-   * 处理配方批次单项称量完成 (统一勾选完成，贴合 DEMO 原型机演示)
-   */
-  _handleRecipeBatchItemDone(finalVal) {
-    const list = this.data.recipeFeedList.slice();
-    const currIdx = this.data.currentFeedIndex;
-    const currFeed = list[currIdx];
-
-    if (currFeed) {
-      list[currIdx].status = 'done';
-      list[currIdx].weighed_g = finalVal;
-    }
-
-    const completed = list.filter(item => item.status === 'done').length;
-
-    let nextIdx = list.findIndex(item => item.status !== 'done');
-    let nextItem = nextIdx >= 0 ? list[nextIdx] : null;
-
-    this.setData({
-      recipeFeedList: list,
-      completedCount: completed,
-      currentFeedIndex: nextIdx >= 0 ? nextIdx : currIdx,
-      currentFeedItem: nextItem || list[currIdx],
-      targetGrams: nextItem ? String(nextItem.target_g) : this.data.targetGrams,
-      toleranceGrams: nextItem ? String(nextItem.tolerance_g) : this.data.toleranceGrams,
-      isWeighingRunning: false,
-      isOperating: false
-    });
-
-    if (completed === list.length) {
-      wx.showModal({
-        title: '🎉 配方投喂全部完成',
-        content: '今日配方所有原料已全部完成称量投喂。',
-        showCancel: false
-      });
-    } else if (nextItem) {
-      const feedName = currFeed ? currFeed.name : '当前原料';
-      wx.showToast({
-        title: `【${feedName}】已完成！请加下一种【${nextItem.name}】`,
-        icon: 'none',
-        duration: 2500
-      });
     }
   },
 
@@ -416,8 +349,7 @@ Page({
     const list = this.data.recipeFeedList.map(item => ({
       ...item,
       status: 'pending',
-      weighed_g: null,
-      diff_g: null
+      weighed_g: null
     }));
 
     this.setData({
@@ -438,7 +370,6 @@ Page({
     let text = msg;
     let emoji = '⚙️';
     let isOp = true;
-    let isRunning = this.data.isWeighingRunning;
 
     switch (msg) {
       case 'clearing':
@@ -448,7 +379,6 @@ Page({
       case 'weighing':
         text = '自动进料称量中…';
         emoji = '⚖️';
-        isRunning = true;
         break;
       case 'checking':
         text = '重量精度校验中…';
@@ -462,19 +392,16 @@ Page({
         text = '放料完毕，闸门已关闭';
         emoji = '✅';
         isOp = false;
-        isRunning = false;
         break;
       case 'empty':
         text = '料仓缺料/已空预警';
         emoji = '⚠️';
         isOp = false;
-        isRunning = false;
         break;
       case 'idle':
         text = '待机就绪';
         emoji = '💤';
         isOp = false;
-        isRunning = false;
         break;
       default:
         text = `运行中: ${msg}`;
@@ -484,7 +411,6 @@ Page({
       statusText: text,
       statusEmoji: emoji,
       isOperating: isOp,
-      isWeighingRunning: isRunning,
       statusClass: isOp ? 'operating' : 'idle'
     });
   },
@@ -523,12 +449,56 @@ Page({
     });
   },
 
-  // 3. 开始自动称量当前配方原料
+  // 3. 开始自动称量当前配方原料 (点击后直接勾选完成，并自动推进下一步)
   handleStartCurrentFeedWeighing() {
-    const item = this.data.currentFeedItem;
-    if (!item) return;
+    const list = this.data.recipeFeedList.slice();
+    const currIdx = this.data.currentFeedIndex;
+    const currItem = list[currIdx];
 
-    this.executeWeigh(item.target_g, item.tolerance_g, item.name);
+    if (!currItem) return;
+    if (!this.data.connected) {
+      wx.showToast({ title: '请先连接称量仪', icon: 'none' });
+      return;
+    }
+
+    // 1. 发送 BLE 指令给树莓派驱动物理仪器
+    bleClient.startWeighing(currItem.target_g, currItem.tolerance_g).catch(err => {
+      console.warn('下发称量指令警告:', err);
+    });
+
+    // 2. 界面上直接勾选完成该项原料
+    list[currIdx].status = 'done';
+    const completed = list.filter(item => item.status === 'done').length;
+
+    // 3. 找到下一个未完成的原料
+    let nextIdx = list.findIndex(item => item.status !== 'done');
+    let nextItem = nextIdx >= 0 ? list[nextIdx] : null;
+
+    this.setData({
+      recipeFeedList: list,
+      completedCount: completed,
+      currentFeedIndex: nextIdx >= 0 ? nextIdx : currIdx,
+      currentFeedItem: nextItem || list[currIdx],
+      targetGrams: nextItem ? String(nextItem.target_g) : this.data.targetGrams,
+      toleranceGrams: nextItem ? String(nextItem.tolerance_g) : this.data.toleranceGrams,
+      statusText: `正在称量投喂【${currItem.name}】(${currItem.target_g}g)...`,
+      statusEmoji: '🚀',
+      isOperating: true
+    });
+
+    if (completed === list.length) {
+      wx.showModal({
+        title: '🎉 配方投喂全部完成',
+        content: '今日配方所有原料已全部完成投喂。',
+        showCancel: false
+      });
+    } else if (nextItem) {
+      wx.showToast({
+        title: `【${currItem.name}】已完成！请加【${nextItem.name}】`,
+        icon: 'none',
+        duration: 2500
+      });
+    }
   },
 
   // 4. 自由模式开始称量
@@ -544,37 +514,24 @@ Page({
       wx.showToast({ title: '请输入有效的误差克数', icon: 'none' });
       return;
     }
-
-    this.executeWeigh(target, tol, '物料');
-  },
-
-  /**
-   * 通用称量执行函数
-   */
-  executeWeigh(targetGrams, toleranceGrams, feedName = '原料') {
     if (!this.data.connected) {
       wx.showToast({ title: '请先连接称量仪', icon: 'none' });
       return;
     }
 
-    const target = parseFloat(targetGrams);
-    const tol = parseFloat(toleranceGrams);
-
     this.setData({
-      isWeighingRunning: true,
       isOperating: true,
-      lastDoneResult: null,
-      statusText: `启动称量【${feedName}】: 目标 ${target}g (误差 ±${tol}g)`,
+      statusText: `启动称量: 目标 ${target}g (误差 ±${tol}g)`,
       statusEmoji: '🚀',
       statusClass: 'operating'
     });
 
     bleClient.startWeighing(target, tol)
       .then(() => {
-        wx.showToast({ title: `【${feedName}】指令已下发`, icon: 'success' });
+        wx.showToast({ title: `指令已下发`, icon: 'success' });
       })
       .catch((err) => {
-        this.setData({ isWeighingRunning: false, isOperating: false });
+        this.setData({ isOperating: false });
         wx.showToast({ title: err.message || '下发指令失败', icon: 'none', duration: 2500 });
       });
   },
