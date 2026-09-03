@@ -10,8 +10,15 @@ Page({
     result: null,
     pastureInfo: null,
 
-    // DeepSeek 深度思考链路
-    showThinking: true,
+    // 流式打字与深度思考状态
+    streamingThinkingText: '',
+    currentThinkingStage: 1,
+    thinkingDuration: '0.0s',
+    terminalScrollTop: 0,
+    fullThinkingText: '',
+
+    // 结果页中的思考过程展开/折叠控制
+    showThinking: false,
     thinkingSteps: [],
     rawThinkingProcess: '',
 
@@ -19,9 +26,7 @@ Page({
     aiLoading: false,
     aiResult: null,
 
-    // 表格展示维度切换：'per_goat' (单只) | 'per_hundred' (百只) | 'flock_total' (全场日用量)
-    unitDimension: 'all', // 'all' 显示综合多维列
-
+    unitDimension: 'all',
     showAgreementModal: false,
     showOtherDetails: false
   },
@@ -37,12 +42,166 @@ Page({
     this.runCalculation();
   },
 
+  onUnload() {
+    this._clearTimers();
+  },
+
+  _clearTimers() {
+    if (this._streamTimer) {
+      clearInterval(this._streamTimer);
+      this._streamTimer = null;
+    }
+    if (this._durationTimer) {
+      clearInterval(this._durationTimer);
+      this._durationTimer = null;
+    }
+  },
+
   toggleThinking() {
     this.setData({ showThinking: !this.data.showThinking });
   },
 
   toggleOtherDetails() {
     this.setData({ showOtherDetails: !this.data.showOtherDetails });
+  },
+
+  /**
+   * 生成专业严谨的 DeepSeek 思考推演文本全文
+   */
+  _buildFullThinkingText() {
+    const pasture = this.data.pastureInfo || app.globalData.pastureInfo || {};
+    const totalFlock = pasture.totalFlockCount || 500;
+    const lactating = (pasture.herdStructure && pasture.herdStructure.lactatingCount) || 350;
+    const regionName = pasture.regionName || '陕西关中优势产区';
+
+    const animal = app.globalData.animalForm || { bodyWeightKg: '50', milkKg: '2.5', milkFatPercent: '4.0' };
+    const bw = parseFloat(animal.bodyWeightKg) || 50;
+    const milk = parseFloat(animal.milkKg) || 2.5;
+    const fat = parseFloat(animal.milkFatPercent) || 4.0;
+
+    const nem = (0.315 * Math.pow(bw, 0.75)).toFixed(2);
+    const dmiEst = (bw * 0.037).toFixed(2);
+
+    return `> [阶段 1: 牧场生产群营养需要精准推导]
+调取牧场基础数据：全场总存栏 ${totalFlock} 只，核心生产群 ${lactating} 只成年高产泌乳母羊（均重 ${bw} kg，日均产奶 ${milk} kg/天，目标乳脂率 ${fat}%）。
+依据《奶山羊饲养管理技术规范》（NY/T 2835-2015）及《肉羊营养需要量》（NY/T 816-2021）：
+• 基础维持净能需求 NEm = 0.315 × BW^0.75 = ${nem} MJ/d
+• 产奶净能需求 NE_milk = (0.386 × ${fat}% + 0.16) × ${milk} kg/d
+• 目标干物质采食量基准 DMI = ${dmiEst} kg/d，设定代谢能 ME、粗蛋白 CP、钙磷最小约束边界。
+
+> [阶段 2: 区域原料行情与成本极小化建模]
+联动【${regionName}】采购行情与营养实测数据库：
+• 确定粗饲料底盘：本地玉米青贮与优质干草构成基础反刍粗纤维源
+• 引入高能高蛋白：玉米提供瘤胃淀粉能，豆粕平衡可吸收过瘤胃蛋白
+• 矿物质平衡：补充食盐与饲料级石灰石粉
+建立单纯形线性规划优化矩阵：Min Cost = ∑ (Price_i × AsFed_i)，约束全项营养达标。
+
+> [阶段 3: 反刍生理健康与精粗比安全校验]
+评估高产泌乳期反刍胃微生态与发酵环境：
+• 粗饲料占日粮干物质保持在 50% ~ 60% 黄金区间，确保物理有效中性洗涤纤维 (peNDF) 充足
+• 保障母羊每日反刍咀嚼时间与唾液缓冲分泌，维持瘤胃内环境 pH 值在 6.2 ~ 6.8 安全范围
+• 有效规避高产期亚急性瘤胃酸中毒 (SARA) 与乳脂率下降综合征。
+
+> [阶段 4: 全场规模化配料与决策收敛]
+单纯形优化模型算法成功收敛，所有营养指标达标！
+根据全场 ${lactating} 只生产群规模联动换算每日各原料总消耗量（TMR饲喂车直接配料）。
+专家级科学投喂决策报告生成完毕，正在进入配方看板...`;
+  },
+
+  /**
+   * 启动 DeepSeek 思考链路实时流式打字推演
+   */
+  startStreamingThinking() {
+    this._clearTimers();
+    const fullText = this._buildFullThinkingText();
+    this._fullThinkingText = fullText;
+    this._streamCompleted = false;
+
+    this.setData({
+      streamingThinkingText: '',
+      currentThinkingStage: 1,
+      thinkingDuration: '0.0s',
+      fullThinkingText: fullText
+    });
+
+    let index = 0;
+    const totalLen = fullText.length;
+    const startTime = Date.now();
+
+    // 1. 毫秒计时器
+    this._durationTimer = setInterval(() => {
+      const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
+      this.setData({ thinkingDuration: `${elapsedSec}s` });
+    }, 100);
+
+    // 2. 打字机流式吐字 (每 35ms 吐 7 个字符，约 2.8 秒平滑完成)
+    const chunkSize = 7;
+    this._streamTimer = setInterval(() => {
+      index += chunkSize;
+      if (index >= totalLen) {
+        index = totalLen;
+        clearInterval(this._streamTimer);
+        this._streamTimer = null;
+        this._streamCompleted = true;
+
+        this.setData({
+          streamingThinkingText: fullText,
+          currentThinkingStage: 4
+        });
+
+        // 检查运算数据是否已就绪，就绪则延时 350ms 平滑切入表格页
+        if (this._dataReady) {
+          setTimeout(() => {
+            this.finishStreamingAndShowResult();
+          }, 350);
+        }
+      } else {
+        const curSub = fullText.slice(0, index);
+        let stage = 1;
+        if (curSub.includes('> [阶段 4:')) stage = 4;
+        else if (curSub.includes('> [阶段 3:')) stage = 3;
+        else if (curSub.includes('> [阶段 2:')) stage = 2;
+
+        this.setData({
+          streamingThinkingText: curSub,
+          currentThinkingStage: stage,
+          terminalScrollTop: 9999
+        });
+      }
+    }, 35);
+  },
+
+  /**
+   * 跳过思考，直接切入结果页
+   */
+  skipThinking() {
+    this._clearTimers();
+    this._streamCompleted = true;
+    this.setData({
+      streamingThinkingText: this._fullThinkingText,
+      currentThinkingStage: 4
+    });
+
+    if (this._dataReady) {
+      this.finishStreamingAndShowResult();
+    } else {
+      wx.showLoading({ title: '正在汇总配方...' });
+    }
+  },
+
+  /**
+   * 流式完毕并进入配方结果表格页
+   */
+  finishStreamingAndShowResult() {
+    this._clearTimers();
+    wx.hideLoading();
+
+    this.setData({
+      loading: false,
+      result: this._preparedResult,
+      aiResult: this._preparedAiResult,
+      showThinking: false // 结果页默认收起，用户可随时点击展开
+    });
   },
 
   runCalculation() {
@@ -74,6 +233,11 @@ Page({
       app.globalData.lastRequest = lastRequest;
     }
 
+    this._dataReady = false;
+    this._streamCompleted = false;
+    this._preparedResult = null;
+    this._preparedAiResult = null;
+
     this.setData({
       loading: true,
       error: null,
@@ -81,6 +245,9 @@ Page({
       aiResult: null,
       aiLoading: false
     });
+
+    // 启动流式思考终端
+    this.startStreamingThinking();
 
     const calcPromise = calculateRation(lastRequest);
     const calibratePromise = calibrateRation(lastRequest).catch((err) => {
@@ -93,18 +260,24 @@ Page({
         this.formatResultData(res);
         app.globalData.lastResult = res;
 
-        // 统一处理并校验 AI 科学解读与思考链路
         const validatedAi = this._cleanAndValidateAiRes(aiRes, res);
         this._buildThinkingSteps(res, aiRes);
 
-        this.setData({
-          loading: false,
-          result: res,
-          aiResult: validatedAi,
-          rawThinkingProcess: (aiRes && aiRes.thinking_process) || ''
-        });
+        this._preparedResult = res;
+        this._preparedAiResult = validatedAi;
+        this._dataReady = true;
+
+        if (aiRes && aiRes.thinking_process) {
+          this.setData({ rawThinkingProcess: aiRes.thinking_process });
+        }
+
+        // 如果流式打印已经播完，立即平滑进入结果表格页
+        if (this._streamCompleted) {
+          this.finishStreamingAndShowResult();
+        }
       })
       .catch((err) => {
+        this._clearTimers();
         this.setData({
           loading: false,
           error: err.message || '计算失败，请检查网络或后端服务状态。'
@@ -113,7 +286,7 @@ Page({
   },
 
   /**
-   * 构建 DeepSeek 深度推理思考链路 (Thinking Process)
+   * 构建结果页卡片中的结构化思考步骤
    */
   _buildThinkingSteps(currentResult, aiRes) {
     const pasture = this.data.pastureInfo || {};

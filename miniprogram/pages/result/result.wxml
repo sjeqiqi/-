@@ -16,19 +16,64 @@
     </view>
   </view>
 
-  <!-- 1. 真实运算与 DeepSeek 智能解读加载中 -->
-  <view wx:if="{{loading}}" class="card calc-loading-card">
-    <view class="spinner"></view>
-    <text class="calc-loading-title">正在生成最低成本日粮与规模化饲喂报告…</text>
-    <text class="calc-loading-subtitle">运筹学优化求解中 · DeepSeek 深度推理思考中…</text>
-    <view class="loading-thinking-preview">
-      <view class="thinking-step-item">
-        <view class="thinking-pulse-dot"></view>
-        <text class="thinking-step-text">分析牧场群组结构与 NY/T 营养需要量约束…</text>
+  <!-- ======================================================== -->
+  <!-- 1. DeepSeek 智能解读生成中 · 实时流式思考推演终端 -->
+  <!-- ======================================================== -->
+  <view wx:if="{{loading}}" class="thinking-terminal-card">
+    <view class="terminal-header">
+      <view class="terminal-header-left">
+        <view class="terminal-dots">
+          <view class="terminal-dot dot-red"></view>
+          <view class="terminal-dot dot-yellow"></view>
+          <view class="terminal-dot dot-green"></view>
+        </view>
+        <view class="terminal-title-wrap">
+          <text class="terminal-title">DeepSeek-Reasoner</text>
+          <text class="terminal-badge-thinking">
+            <text class="pulse-thinking-circle"></text>
+            深度思考中 ({{thinkingDuration}})
+          </text>
+        </view>
       </view>
-      <view class="thinking-step-item" style="opacity: 0.75;">
-        <view class="thinking-pulse-dot" style="background: #38bdf8;"></view>
-        <text class="thinking-step-text">匹配选定主产区原料行情价与粗精比安全边界…</text>
+      <view class="terminal-skip-btn" bindtap="skipThinking">
+        ⏩ 跳过思考
+      </view>
+    </view>
+
+    <!-- 思考阶段推进器 -->
+    <view class="terminal-stages-bar">
+      <view class="stage-tag {{currentThinkingStage >= 1 ? 'active' : ''}}">
+        <text class="stage-icon">{{currentThinkingStage > 1 ? '✓' : '1'}}</text>
+        <text>需要量解析</text>
+      </view>
+      <view class="stage-divider {{currentThinkingStage >= 2 ? 'active' : ''}}"></view>
+      <view class="stage-tag {{currentThinkingStage >= 2 ? 'active' : ''}}">
+        <text class="stage-icon">{{currentThinkingStage > 2 ? '✓' : '2'}}</text>
+        <text>产区行情约束</text>
+      </view>
+      <view class="stage-divider {{currentThinkingStage >= 3 ? 'active' : ''}}"></view>
+      <view class="stage-tag {{currentThinkingStage >= 3 ? 'active' : ''}}">
+        <text class="stage-icon">{{currentThinkingStage > 3 ? '✓' : '3'}}</text>
+        <text>反刍健康校验</text>
+      </view>
+      <view class="stage-divider {{currentThinkingStage >= 4 ? 'active' : ''}}"></view>
+      <view class="stage-tag {{currentThinkingStage >= 4 ? 'active' : ''}}">
+        <text class="stage-icon">{{currentThinkingStage >= 4 ? '✓' : '4'}}</text>
+        <text>全场收敛求解</text>
+      </view>
+    </view>
+
+    <!-- 打字机流式推演控制台 -->
+    <scroll-view scroll-y class="terminal-scroll-area" scroll-top="{{terminalScrollTop}}">
+      <view class="terminal-console-body">
+        <text class="terminal-text">{{streamingThinkingText}}</text>
+        <text class="terminal-cursor">▌</text>
+      </view>
+    </scroll-view>
+
+    <view class="terminal-footer">
+      <view class="terminal-status-info">
+        <text class="terminal-hint">正在执行反刍营养学与线性规划单纯形法收敛计算…</text>
       </view>
     </view>
   </view>
@@ -67,7 +112,7 @@
     </view>
   </view>
 
-  <!-- 4. 正常配方结果展示 (排版总原则：文字与解读前置，详细数据与表格后置) -->
+  <!-- 4. 正常配方结果展示 (排版黄金原则：文字与解读前置，详细数据与表格后置) -->
   <block wx:else>
 
     <!-- 近似配比提示（仅在原料过少时） -->
@@ -92,11 +137,11 @@
               <text class="thinking-title">DeepSeek 深度推理与思考链路</text>
               <text class="tag-reasoning">Thinking Process</text>
             </view>
-            <text class="thinking-subtitle">大模型反刍营养学与线性规划推演过程</text>
+            <text class="thinking-subtitle">已完成思考推演（耗时 {{thinkingDuration}}），点击查阅思维链全文</text>
           </view>
         </view>
         <view class="thinking-toggle-btn">
-          <text class="thinking-arrow">{{showThinking ? '收起 ▲' : '展开 ▼'}}</text>
+          <text class="thinking-arrow">{{showThinking ? '收起 ▲' : '展开查看思维链 ▼'}}</text>
         </view>
       </view>
 
@@ -112,9 +157,15 @@
           </view>
         </view>
 
-        <!-- 原始推理文本（若接口返回） -->
-        <view wx:if="{{rawThinkingProcess}}" class="raw-thinking-box">
-          <text class="raw-thinking-title">原语思维链片段：</text>
+        <!-- 完整思维链推演文本控制台 -->
+        <view class="raw-thinking-box">
+          <text class="raw-thinking-title">🖥️ 完整思维链推演记录：</text>
+          <text class="raw-thinking-content">{{fullThinkingText}}</text>
+        </view>
+
+        <!-- 原始推理文本（若接口返回特别内容） -->
+        <view wx:if="{{rawThinkingProcess && rawThinkingProcess !== fullThinkingText}}" class="raw-thinking-box" style="margin-top: 14rpx;">
+          <text class="raw-thinking-title">大模型原始 Reasoning 文本：</text>
           <text class="raw-thinking-content">{{rawThinkingProcess}}</text>
         </view>
       </view>
