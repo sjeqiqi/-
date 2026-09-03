@@ -15,7 +15,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import ai, spec
@@ -137,6 +137,26 @@ def calibrate(request: CalibrateRequest) -> dict:
         )
     payload = ai.build_ai_payload(result, req.to_dict())
     return ai.calibrate_with_ai(payload)
+
+
+@app.post("/api/rations/calibrate/stream")
+def calibrate_stream(request: CalibrateRequest):
+    try:
+        req, effective, owned = prepare_request(_catalog, request)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    result = optimize_ration(effective, owned, req)
+    result = _management_response(result, req.to_dict(), effective, owned)
+    if result["status"] != "feasible":
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "当前输入不可行或只能给出近似配比，无法生成 AI 校准解读。", "result": result},
+        )
+    payload = ai.build_ai_payload(result, req.to_dict())
+    return StreamingResponse(
+        ai.stream_calibrate_with_ai(payload),
+        media_type="text/event-stream"
+    )
 
 
 # ---- 可选：托管构建后的前端（本地单服务部署） ----

@@ -16,9 +16,9 @@ from typing import Any
 import httpx
 
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-# 默认使用 deepseek-v4-flash 或 deepseek-chat
-DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
-TIMEOUT_SECONDS = 30.0
+# 默认使用 deepseek-reasoner (支持深度推理思考链输出)
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-reasoner")
+TIMEOUT_SECONDS = 45.0
 MAX_EXPLANATIONS = 4
 MAX_RISKS = 3
 MAX_STRING_LEN = 200
@@ -171,8 +171,10 @@ def calibrate_with_ai(
     own_client = client is None
     http: httpx.Client | None = client
     
-    # 候选模型列表：优先使用配置模型，若不存在则回退至官方通用模型 deepseek-chat
+    # 候选模型列表：优先使用配置模型 (deepseek-reasoner)，若不可用则回退
     models_to_try = [DEEPSEEK_MODEL]
+    if "deepseek-reasoner" not in models_to_try:
+        models_to_try.append("deepseek-reasoner")
     if "deepseek-chat" not in models_to_try:
         models_to_try.append("deepseek-chat")
 
@@ -185,19 +187,23 @@ def calibrate_with_ai(
         for model_name in models_to_try:
             for attempt in range(2):
                 try:
+                    req_json = {
+                        "model": model_name,
+                        "messages": [
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+                        ],
+                        "max_tokens": MAX_RESPONSE_TOKENS,
+                    }
+                    # deepseek-reasoner 不支持 response_format 和 temperature
+                    if "reasoner" not in model_name:
+                        req_json["temperature"] = 0.3
+                        req_json["response_format"] = {"type": "json_object"}
+
                     response = http.post(
                         f"{DEEPSEEK_BASE_URL}/chat/completions",
                         headers={"Authorization": f"Bearer {key}"},
-                        json={
-                            "model": model_name,
-                            "messages": [
-                                {"role": "system", "content": SYSTEM_PROMPT},
-                                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-                            ],
-                            "temperature": 0.3,
-                            "max_tokens": MAX_RESPONSE_TOKENS,
-                            "response_format": {"type": "json_object"},
-                        },
+                        json=req_json,
                     )
                     
                     if response.status_code == 400 or response.status_code == 404:
@@ -240,3 +246,99 @@ def calibrate_with_ai(
     finally:
         if own_client and http is not None:
             http.close()
+
+
+def stream_calibrate_with_ai(
+    payload: dict,
+    api_key: str | None = None,
+):
+    """
+    流式调用 DeepSeek Reasoner 大模型：
+    实时产出 delta.reasoning_content（思考过程流式分块）
+    以及最终解析出的 JSON 结构。
+    """
+    key = api_key or os.environ.get("DEEPSEEK_API_KEY")
+    if not key:
+        fb = _fallback("未配置 DEEPSEEK_API_KEY")
+        yield f"data: {json.dumps({'type': 'done', 'ai_result': fb}, ensure_ascii=False)}\n\n"
+        return
+
+    models_to_try = [DEEPSEEK_MODEL]
+    if "deepseek-reasoner" not in models_to_try:
+        models_to_try.append("deepseek-reasoner")
+    if "deepseek-chat" not in models_to_try:
+        models_to_try.append("deepseek-chat")
+
+    for model_name in models_to_try:
+        req_json = {
+            "model": model_name,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+            ],
+            "max_tokens": MAX_RESPONSE_TOKENS,
+            "stream": True,
+        }
+        if "reasoner" not in model_name:
+            req_json["temperature"] = 0.3
+            req_json["response_format"] = {"type": "json_object"}
+
+        try:
+            with httpx.Client(timeout=60.0) as client:
+                with client.stream(
+                    "POST",
+                    f"{DEEPSEEK_BASE_URL}/chat/completions",
+                    headers={"Authorization": f"Bearer {key}"},
+                    json=req_json,
+                ) as response:
+                    if response.status_code >= 400:
+                        continue
+
+                    collected_reasoning = []
+                    collected_content = []
+                    for line in response.iter_lines():
+                        if not line:
+                            continue
+                        line_str = line.strip()
+                        if line_str.startswith("data:"):
+                            data_str = line_str[5:].strip()
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                chunk_obj = json.loads(data_str)
+                                delta = chunk_obj["choices"][0].get("delta", {})
+                                r_chunk = delta.get("reasoning_content")
+                                c_chunk = delta.get("content")
+                                if r_chunk:
+                                    collected_reasoning.append(r_chunk)
+                                    yield f"data: {json.dumps({'type': 'thinking', 'chunk': r_chunk}, ensure_ascii=False)}\n\n"
+                                if c_chunk:
+                                    collected_content.append(c_chunk)
+                                    yield f"data: {json.dumps({'type': 'content', 'chunk': c_chunk}, ensure_ascii=False)}\n\n"
+                            except Exception:
+                                pass
+
+                    full_content = "".join(collected_content)
+                    full_reasoning = "".join(collected_reasoning)
+                    try:
+                        validated = validate_ai_json(_extract_json(full_content))
+                        ai_res = {
+                            "status": "ok",
+                            **validated,
+                            "thinking_process": full_reasoning.strip() if full_reasoning.strip() else None,
+                            "ai_unavailable": False,
+                            "fallback_reason": None,
+                        }
+                    except Exception as e:
+                        ai_res = _fallback(f"JSON解析异常: {e}")
+                        if full_reasoning.strip():
+                            ai_res["thinking_process"] = full_reasoning.strip()
+
+                    yield f"data: {json.dumps({'type': 'done', 'ai_result': ai_res}, ensure_ascii=False)}\n\n"
+                    return
+        except Exception:
+            continue
+
+    fb = _fallback("所有候选模型流式调用失败")
+    yield f"data: {json.dumps({'type': 'done', 'ai_result': fb}, ensure_ascii=False)}\n\n"
+

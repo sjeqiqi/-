@@ -75,9 +75,89 @@ export function calculateRation(calculateRequest) {
   return request('/api/rations/calculate', 'POST', calculateRequest);
 }
 
-// 3. AI 通俗解读校准
+// 3. AI 通俗解读校准 (单次同步)
 export function calibrateRation(calibrateRequest) {
   return request('/api/rations/calibrate', 'POST', calibrateRequest);
+}
+
+// 3.1 AI 深度思考真实原生 SSE 流式接口
+export function calibrateRationStream(calibrateRequest, { onThinking, onContent, onDone, onError }) {
+  let buffer = '';
+  const requestTask = wx.request({
+    url: `${BASE_URL}/api/rations/calibrate/stream`,
+    method: 'POST',
+    data: calibrateRequest,
+    enableChunked: true,
+    header: {
+      'content-type': 'application/json'
+    },
+    success: (res) => {
+      if (res.statusCode >= 400 && onError) {
+        onError(new Error(`HTTP ${res.statusCode}`));
+      }
+    },
+    fail: (err) => {
+      if (onError) onError(err);
+    }
+  });
+
+  requestTask.onChunkReceived((res) => {
+    try {
+      const chunkStr = decodeArrayBuffer(res.data);
+      buffer += chunkStr;
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // 保留未完成的分块
+      for (let line of lines) {
+        line = line.trim();
+        if (line.startsWith('data:')) {
+          const jsonStr = line.slice(5).trim();
+          if (jsonStr) {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.type === 'thinking' && onThinking) {
+              onThinking(parsed.chunk);
+            } else if (parsed.type === 'content' && onContent) {
+              onContent(parsed.chunk);
+            } else if (parsed.type === 'done' && onDone) {
+              onDone(parsed.ai_result);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('流式解码解析提示:', e);
+    }
+  });
+
+  return requestTask;
+}
+
+function decodeArrayBuffer(buffer) {
+  if (typeof TextDecoder !== 'undefined') {
+    return new TextDecoder('utf-8').decode(buffer);
+  }
+  const bytes = new Uint8Array(buffer);
+  let out = '';
+  let i = 0;
+  while (i < bytes.length) {
+    const c = bytes[i++];
+    if (c < 128) {
+      out += String.fromCharCode(c);
+    } else if (c > 191 && c < 224) {
+      const c2 = bytes[i++];
+      out += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+    } else if (c > 223 && c < 240) {
+      const c2 = bytes[i++];
+      const c3 = bytes[i++];
+      out += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+    } else {
+      const c2 = bytes[i++];
+      const c3 = bytes[i++];
+      const c4 = bytes[i++];
+      let u = (((c & 7) << 18) | ((c2 & 63) << 12) | ((c3 & 63) << 6) | (c4 & 63)) - 0x10000;
+      out += String.fromCharCode(0xd800 + (u >> 10), 0xdc00 + (u & 1023));
+    }
+  }
+  return out;
 }
 
 // 4. 健康检查

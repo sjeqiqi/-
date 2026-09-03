@@ -1,5 +1,5 @@
 // pages/result/result.js
-import { calculateRation, calibrateRation } from '../../utils/api.js';
+import { calculateRation, calibrateRation, calibrateRationStream } from '../../utils/api.js';
 
 const app = getApp();
 
@@ -243,13 +243,105 @@ Page({
       error: null,
       result: null,
       aiResult: null,
-      aiLoading: false
+      aiLoading: false,
+      streamingThinkingText: '',
+      currentThinkingStage: 1,
+      thinkingDuration: '0.0s'
     });
 
-    // 启动流式思考终端
-    this.startStreamingThinking();
+    // 启动毫秒级思考计时器
+    const startTime = Date.now();
+    this._durationTimer = setInterval(() => {
+      const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
+      this.setData({ thinkingDuration: `${elapsedSec}s` });
+    }, 100);
 
-    const calcPromise = calculateRation(lastRequest);
+    // 1. 并行发起运筹学计算求解
+    const calcPromise = calculateRation(lastRequest)
+      .then((res) => {
+        this.formatResultData(res);
+        app.globalData.lastResult = res;
+        this._preparedResult = res;
+        return res;
+      })
+      .catch((err) => {
+        console.warn('运筹学求解异常:', err);
+        throw err;
+      });
+
+    // 2. 发起 DeepSeek 模型真实流式思考与校准
+    let streamReceivedAny = false;
+    const streamTask = calibrateRationStream(lastRequest, {
+      onThinking: (chunk) => {
+        streamReceivedAny = true;
+        const newText = (this.data.streamingThinkingText || '') + chunk;
+        let stage = 1;
+        const len = newText.length;
+        if (len > 350 || newText.includes('全场') || newText.includes('阶段 4')) stage = 4;
+        else if (len > 220 || newText.includes('反刍') || newText.includes('阶段 3') || newText.includes('pH')) stage = 3;
+        else if (len > 100 || newText.includes('行情') || newText.includes('阶段 2') || newText.includes('青贮')) stage = 2;
+
+        this.setData({
+          streamingThinkingText: newText,
+          currentThinkingStage: stage,
+          terminalScrollTop: 9999
+        });
+      },
+      onContent: (chunk) => {
+        // 模型开始输出最终 JSON 结果
+        this.setData({ currentThinkingStage: 4 });
+      },
+      onDone: (aiRes) => {
+        calcPromise
+          .then((res) => {
+            const validatedAi = this._cleanAndValidateAiRes(aiRes, res);
+            this._buildThinkingSteps(res, aiRes);
+            this._preparedAiResult = validatedAi;
+            this._dataReady = true;
+            this._streamCompleted = true;
+
+            const fullThinking = this.data.streamingThinkingText || (aiRes && aiRes.thinking_process) || '';
+            this.setData({
+              fullThinkingText: fullThinking,
+              rawThinkingProcess: fullThinking,
+              currentThinkingStage: 4
+            });
+
+            // 停留 500ms 让用户与讲解者看到推理完成，然后切入结果表格页
+            setTimeout(() => {
+              this.finishStreamingAndShowResult();
+            }, 500);
+          })
+          .catch((err) => {
+            this._clearTimers();
+            this.setData({ loading: false, error: err.message || '计算失败' });
+          });
+      },
+      onError: (streamErr) => {
+        console.warn('原生流式接口不可用或受限，自动切换为模型异步思考接收模式:', streamErr);
+        if (!streamReceivedAny) {
+          // 若流式首包未收到，则回退到标准模型请求
+          this._fallbackModelThinkingFlow(lastRequest, calcPromise);
+        }
+      }
+    });
+
+    // 备用超时守卫：若 2.5s 内未收到任何流式包（如网络或容器限制），启动平滑打字推演保护
+    setTimeout(() => {
+      if (!streamReceivedAny && this.data.loading) {
+        console.log('未检测到 SSE 分块，启动模型思维链同步接收机制');
+        this._fallbackModelThinkingFlow(lastRequest, calcPromise);
+      }
+    }, 2500);
+  },
+
+  /**
+   * 模型思考回退流式处理：当 SSE 链路受限时，从标准接口获取真实模型 thinking_process 并推演展示
+   */
+  _fallbackModelThinkingFlow(lastRequest, calcPromise) {
+    if (this._fallbackInitiated) return;
+    this._fallbackInitiated = true;
+
     const calibratePromise = calibrateRation(lastRequest).catch((err) => {
       console.warn('AI 接口调用异常，已启用本地科学复核兜底:', err);
       return null;
@@ -267,14 +359,18 @@ Page({
         this._preparedAiResult = validatedAi;
         this._dataReady = true;
 
-        if (aiRes && aiRes.thinking_process) {
-          this.setData({ rawThinkingProcess: aiRes.thinking_process });
-        }
+        // 获取真实的模型思考输出（优先使用 DeepSeek Reasoner 真实返回）
+        const realModelThinking = (aiRes && aiRes.thinking_process && aiRes.thinking_process.trim()) 
+          ? aiRes.thinking_process 
+          : this._buildFullThinkingText();
 
-        // 如果流式打印已经播完，立即平滑进入结果表格页
-        if (this._streamCompleted) {
-          this.finishStreamingAndShowResult();
-        }
+        this.setData({
+          fullThinkingText: realModelThinking,
+          rawThinkingProcess: realModelThinking
+        });
+
+        // 将真实模型思维链快速流式打印在屏幕上
+        this._streamSpecificText(realModelThinking);
       })
       .catch((err) => {
         this._clearTimers();
@@ -283,6 +379,48 @@ Page({
           error: err.message || '计算失败，请检查网络或后端服务状态。'
         });
       });
+  },
+
+  /**
+   * 将指定文本（来自模型的真实输出）流式打印到控制台终端
+   */
+  _streamSpecificText(fullText) {
+    this._clearTimers();
+    let index = 0;
+    const totalLen = fullText.length;
+    const chunkSize = 8;
+
+    this._streamTimer = setInterval(() => {
+      index += chunkSize;
+      if (index >= totalLen) {
+        index = totalLen;
+        clearInterval(this._streamTimer);
+        this._streamTimer = null;
+        this._streamCompleted = true;
+
+        this.setData({
+          streamingThinkingText: fullText,
+          currentThinkingStage: 4
+        });
+
+        setTimeout(() => {
+          this.finishStreamingAndShowResult();
+        }, 500);
+      } else {
+        const curSub = fullText.slice(0, index);
+        let stage = 1;
+        const len = curSub.length;
+        if (len > 350 || curSub.includes('全场') || curSub.includes('阶段 4')) stage = 4;
+        else if (len > 220 || curSub.includes('反刍') || curSub.includes('阶段 3')) stage = 3;
+        else if (len > 100 || curSub.includes('行情') || curSub.includes('阶段 2')) stage = 2;
+
+        this.setData({
+          streamingThinkingText: curSub,
+          currentThinkingStage: stage,
+          terminalScrollTop: 9999
+        });
+      }
+    }, 30);
   },
 
   /**
