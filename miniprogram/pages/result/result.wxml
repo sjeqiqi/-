@@ -4,7 +4,7 @@
   <view class="steps-bar">
     <view class="step-item completed">
       <view class="step-icon">✓</view>
-      <text class="step-text">羊只信息</text>
+      <text class="step-text">牧场信息</text>
     </view>
     <view class="step-item completed">
       <view class="step-icon">✓</view>
@@ -16,11 +16,21 @@
     </view>
   </view>
 
-  <!-- 1. 真实运算与 DeepSeek 智能解读加载中（协同完成后整体呈现） -->
+  <!-- 1. 真实运算与 DeepSeek 智能解读加载中 -->
   <view wx:if="{{loading}}" class="card calc-loading-card">
     <view class="spinner"></view>
-    <text class="calc-loading-title">正在生成最低成本日粮与科学饲喂报告…</text>
-    <text class="calc-loading-subtitle">运筹学优化求解 · DeepSeek 智能解读生成中</text>
+    <text class="calc-loading-title">正在生成最低成本日粮与规模化饲喂报告…</text>
+    <text class="calc-loading-subtitle">运筹学优化求解中 · DeepSeek 深度推理思考中…</text>
+    <view class="loading-thinking-preview">
+      <view class="thinking-step-item">
+        <view class="thinking-pulse-dot"></view>
+        <text class="thinking-step-text">分析牧场群组结构与 NY/T 营养需要量约束…</text>
+      </view>
+      <view class="thinking-step-item" style="opacity: 0.75;">
+        <view class="thinking-pulse-dot" style="background: #38bdf8;"></view>
+        <text class="thinking-step-text">匹配选定主产区原料行情价与粗精比安全边界…</text>
+      </view>
+    </view>
   </view>
 
   <!-- 2. 发生网络或服务端错误 -->
@@ -31,7 +41,7 @@
     </view>
     <view class="btn-row">
       <button class="btn-secondary" bindtap="handleBack">返回修改原料</button>
-      <button class="btn-primary" bindtap="handleEditAnimal">修改羊只信息</button>
+      <button class="btn-primary" bindtap="handleEditAnimal">修改牧场信息</button>
     </view>
   </view>
 
@@ -53,12 +63,13 @@
 
     <view class="btn-row">
       <button class="btn-secondary" bindtap="handleBack">返回修改原料</button>
-      <button class="btn-primary" bindtap="handleEditAnimal">修改羊只信息</button>
+      <button class="btn-primary" bindtap="handleEditAnimal">修改牧场信息</button>
     </view>
   </view>
 
-  <!-- 4. 正常配方结果展示 (按用户指定黄金顺序排布) -->
+  <!-- 4. 正常配方结果展示 (排版总原则：文字与解读前置，详细数据与表格后置) -->
   <block wx:else>
+
     <!-- 近似配比提示（仅在原料过少时） -->
     <view wx:if="{{result.status === 'approximate'}}" class="alert-box alert-warning" style="margin-bottom: 24rpx;">
       <text style="font-size: 28rpx; font-weight: 700; display: block; margin-bottom: 6rpx;">
@@ -69,10 +80,116 @@
       </text>
     </view>
 
-    <!-- 核心指标卡片矩阵 -->
+    <!-- ======================================================== -->
+    <!-- 顶层 · 智能推理与思考过程（DeepSeek Thinking Process） -->
+    <!-- ======================================================== -->
+    <view class="card thinking-card">
+      <view class="thinking-header" bindtap="toggleThinking">
+        <view class="thinking-title-wrap">
+          <view class="thinking-badge-icon">🧠</view>
+          <view>
+            <view style="display: flex; align-items: center; gap: 10rpx;">
+              <text class="thinking-title">DeepSeek 深度推理与思考链路</text>
+              <text class="tag-reasoning">Thinking Process</text>
+            </view>
+            <text class="thinking-subtitle">大模型反刍营养学与线性规划推演过程</text>
+          </view>
+        </view>
+        <view class="thinking-toggle-btn">
+          <text class="thinking-arrow">{{showThinking ? '收起 ▲' : '展开 ▼'}}</text>
+        </view>
+      </view>
+
+      <!-- 思考过程展开区域 -->
+      <view wx:if="{{showThinking}}" class="thinking-body">
+        <view class="thinking-steps-list">
+          <view wx:for="{{thinkingSteps}}" wx:key="step" class="thinking-step-row">
+            <view class="step-num-badge">{{item.step}}</view>
+            <view class="step-content-wrap">
+              <text class="step-item-title">{{item.title}}</text>
+              <text class="step-item-desc">{{item.desc}}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 原始推理文本（若接口返回） -->
+        <view wx:if="{{rawThinkingProcess}}" class="raw-thinking-box">
+          <text class="raw-thinking-title">原语思维链片段：</text>
+          <text class="raw-thinking-content">{{rawThinkingProcess}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- ======================================================== -->
+    <!-- 第二层 · 配方亮点与专家解读 (首屏核心视觉区) -->
+    <!-- ======================================================== -->
+    <view class="card" style="padding: 24rpx;">
+      <view class="ai-card-header">
+        <view class="ai-card-title">
+          <text class="ai-sparkle-icon">✨</text>
+          <text class="ai-title-text">AI 专家综合决策解读</text>
+        </view>
+        <button 
+          wx:if="{{result.status === 'feasible'}}" 
+          class="btn-refresh-ai" 
+          bindtap="handleManualCalibrate" 
+          loading="{{aiLoading}}"
+        >
+          {{aiLoading ? '分析中' : '重新生成'}}
+        </button>
+      </view>
+
+      <!-- 手动重新分析时的局部加载状态 -->
+      <view wx:if="{{aiLoading}}" class="ai-loading-box">
+        <view class="spinner" style="width: 44rpx; height: 44rpx; border-width: 4rpx; border-top-color: #4f46e5;"></view>
+        <text style="font-size: 26rpx; color: #4338ca; margin-top: 14rpx; font-weight: 600; display: block;">
+          正在重新生成 DeepSeek 智能解读…
+        </text>
+      </view>
+
+      <!-- AI 生成完成后的解读内容 -->
+      <view wx:elif="{{aiResult && aiResult.explanations && aiResult.explanations.length > 0}}" class="ai-box" style="margin-top: 14rpx;">
+        <view class="ai-box-title">
+          <text>💡 智能通俗饲喂指导</text>
+          <text wx:if="{{aiResult.ai_unavailable}}" class="tag-estimate">科学复核模式</text>
+        </view>
+        <view wx:for="{{aiResult.explanations}}" wx:key="*this" class="ai-text">
+          • {{item}}
+        </view>
+      </view>
+
+      <!-- 配方核心优势亮点 (精粗比、供能/蛋白主力) -->
+      <view class="insight-block" style="margin-top: 20rpx;">
+        <text class="insight-title">🌟 配方构成亮点与产奶潜力</text>
+        <view class="insight-content">
+          <text>• 选用 {{result.ration_insights.used_feed_count}} 种原料，粗饲料占干物质 {{result.ration_insights.forage_dm_pct}}%（精粗比维持在反刍安全黄金区间）</text>
+          <text wx:if="{{result.ration_insights.top_me_sources && result.ration_insights.top_me_sources.length > 0}}">
+            • 核心能量源：{{result.ration_insights.top_me_sources[0].name}} (贡献率 {{result.ration_insights.top_me_sources[0].share_pct}}%)
+          </text>
+          <text wx:if="{{result.ration_insights.top_cp_sources && result.ration_insights.top_cp_sources.length > 0}}">
+            • 核心蛋白源：{{result.ration_insights.top_cp_sources[0].name}} (贡献率 {{result.ration_insights.top_cp_sources[0].share_pct}}%)
+          </text>
+          <text>• 成本控制亮点：在严格满足国家标准的前提下，达成全场最低成本配比</text>
+        </view>
+      </view>
+
+      <!-- 日常饲喂管理建议 -->
+      <view class="insight-block" style="border-bottom: none; margin-top: 16rpx;">
+        <text class="insight-title">📋 牧场日常饲喂管理建议</text>
+        <view class="insight-content">
+          <view wx:for="{{result.management_tips}}" wx:key="*this" style="margin-bottom: 6rpx;">
+            • {{item}}
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- ======================================================== -->
+    <!-- 第三层 · 四大宏观指标看板 -->
+    <!-- ======================================================== -->
     <view class="core-grid">
       <view class="metric-card">
-        <text class="metric-label">每日喂料总量</text>
+        <text class="metric-label">每日饲喂总量</text>
         <view class="metric-val-wrap">
           <text class="metric-val">{{result.totals.as_fed_kg}}</text>
           <text class="metric-unit">kg/只</text>
@@ -103,63 +220,88 @@
       </view>
     </view>
 
-    <!-- ============================================ -->
-    <!-- 顺序 1：每日原料精准配比表 (配比表) -->
-    <!-- ============================================ -->
+    <!-- ======================================================== -->
+    <!-- 底层 · 原料配比与全场总用量详情表 -->
+    <!-- ======================================================== -->
     <view class="card" style="padding: 24rpx;">
-      <view class="card-title">
-        <text>📋 每日原料精准配比表</text>
-        <text style="font-size: 24rpx; font-weight: normal; color: #64748b;">精准至 10g</text>
+      <view class="card-title-row">
+        <view>
+          <text class="card-title-text">📋 原料配比与全场总用量详情表</text>
+          <text class="card-title-sub">涵盖单羊、百只及全场生产群每日采购配料总用量</text>
+        </view>
+        <text class="badge-green">多维联动</text>
       </view>
 
-      <scroll-view scroll-x class="table-scroll">
+      <!-- 全场总用量汇总横幅 -->
+      <view class="flock-summary-banner">
+        <view class="flock-summary-title">
+          🐑 全场生产群（{{result.flock_totals.lactating_count}} 只成年泌乳羊）每日原料总消耗：
+        </view>
+        <view class="flock-summary-numbers">
+          <view class="flock-num-item">
+            <text class="flock-num-val">{{result.flock_totals.as_fed_daily_kg}}</text>
+            <text class="flock-num-unit">kg/天 (约 {{result.flock_totals.as_fed_daily_ton}} 吨)</text>
+          </view>
+          <view class="flock-num-item" style="text-align: right;">
+            <text class="flock-num-val" style="color: #d97706;">¥{{result.flock_totals.cost_daily_rmb}}</text>
+            <text class="flock-num-unit">全场日粮总成本</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 多维度单位数据表格 -->
+      <scroll-view scroll-x class="table-scroll" style="margin-top: 18rpx;">
         <view class="table">
           <view class="table-tr table-th">
             <view class="table-td cell-name">原料名称</view>
-            <view class="table-td cell-amt">用量(kg/天)</view>
+            <view class="table-td cell-amt">单羊(kg/只)</view>
+            <view class="table-td cell-amt">百只(kg/百只)</view>
+            <view class="table-td cell-flock">全场日用量</view>
             <view class="table-td cell-price">单价(元/kg)</view>
-            <view class="table-td cell-cost">成本(元/天)</view>
           </view>
           <view wx:for="{{result.feed_rows}}" wx:key="feed_id" class="table-tr">
-            <view class="table-td cell-name">{{item.name}}</view>
-            <view class="table-td cell-amt font-bold">{{item.as_fed_kg}}</view>
+            <view class="table-td cell-name font-bold">{{item.name}}</view>
+            <view class="table-td cell-amt">{{item.as_fed_kg}}</view>
+            <view class="table-td cell-amt" style="color: #0284c7;">{{item.per_hundred_kg}}</view>
+            <view class="table-td cell-flock font-bold" style="color: #059669;">{{item.flock_daily_display}}</view>
             <view class="table-td cell-price">{{item.price_rmb_per_kg}}</view>
-            <view class="table-td cell-cost">{{item.cost_rmb}}</view>
           </view>
           <view class="table-tr table-tfoot">
             <view class="table-td cell-name" style="font-weight: 700;">合计</view>
             <view class="table-td cell-amt" style="font-weight: 700;">{{result.totals.as_fed_kg}}</view>
-            <view class="table-td cell-price">—</view>
-            <view class="table-td cell-cost" style="font-weight: 700; color: #d97706;">{{result.totals.cost_rmb}} 元</view>
+            <view class="table-td cell-amt" style="font-weight: 700; color: #0284c7;">—</view>
+            <view class="table-td cell-flock" style="font-weight: 700; color: #059669;">{{result.flock_totals.as_fed_daily_kg}} kg</view>
+            <view class="table-td cell-price" style="font-weight: 700; color: #d97706;">{{result.totals.cost_rmb}}元/只</view>
           </view>
         </view>
       </scroll-view>
-      <text class="form-hint" style="margin-top: 16rpx;">
-        总干物质 {{result.totals.dm_kg}} kg/天，占目标采食量 ({{result.dmi_target_kg}} kg) 的 {{result.nutrients.dmi_pct_of_target}}%
+
+      <text class="form-hint" style="margin-top: 14rpx;">
+        总干物质 {{result.totals.dm_kg}} kg/只/天，占目标采食量 ({{result.dmi_target_kg}} kg) 的 {{result.nutrients.dmi_pct_of_target}}%，符合反刍胃容积规律。
       </text>
 
       <!-- 智能硬件称量入口 -->
-      <view style="margin-top: 20rpx;">
+      <view style="margin-top: 22rpx;">
         <button class="btn-weigh-link" bindtap="handleOpenWeighStation">
           ⚖️ 启动自动称量仪器精准投喂 ➔
         </button>
       </view>
     </view>
 
-    <!-- ============================================ -->
-    <!-- 顺序 2：营养达标复核明细表 (营养达标 - 计算好后直接弹出展示) -->
-    <!-- ============================================ -->
+    <!-- ======================================================== -->
+    <!-- 附录 · 营养达标复核明细表 (按 10g 整数化逐项科学复核) -->
+    <!-- ======================================================== -->
     <view class="card" style="padding: 24rpx;">
       <view class="card-title">
-        <text>📊 营养达标复核明细</text>
-        <text class="badge-green">国家标准复核</text>
+        <text>📊 营养达标复核明细表</text>
+        <text class="badge-green">国家行业标准复核</text>
       </view>
-      <view class="card-subtitle">按 10g 整数化后的最终投喂量逐项科学复核</view>
+      <view class="card-subtitle">依照 NY/T 2835 及 NY/T 816，按 10g 整数化投喂量逐项复核</view>
 
       <scroll-view scroll-x class="table-scroll">
         <view class="table">
           <view class="table-tr table-th">
-            <view class="table-td cell-n-label">指标</view>
+            <view class="table-td cell-n-label">营养指标</view>
             <view class="table-td cell-n-target">标准要求</view>
             <view class="table-td cell-n-actual">实际供给</view>
             <view class="table-td cell-n-pass">达标状态</view>
@@ -176,76 +318,13 @@
       </scroll-view>
     </view>
 
-    <!-- ============================================ -->
-    <!-- 顺序 3：配方智能解读 (直接用 AI，未生成时显示生成状态) -->
-    <!-- ============================================ -->
-    <view class="card">
-      <view class="ai-card-header">
-        <view class="ai-card-title">
-          <text class="ai-sparkle-icon">✨</text>
-          <text class="ai-title-text">AI 智能科学配方解读</text>
-        </view>
-        <button 
-          wx:if="{{result.status === 'feasible'}}" 
-          class="btn-refresh-ai" 
-          bindtap="handleManualCalibrate" 
-          loading="{{aiLoading}}"
-        >
-          {{aiLoading ? '分析中' : '重新生成'}}
-        </button>
-      </view>
-
-      <!-- 3.1 手动重新分析时的局部加载状态 -->
-      <view wx:if="{{aiLoading}}" class="ai-loading-box">
-        <view class="spinner" style="width: 44rpx; height: 44rpx; border-width: 4rpx; border-top-color: #4f46e5;"></view>
-        <text style="font-size: 26rpx; color: #4338ca; margin-top: 14rpx; font-weight: 600; display: block;">
-          正在重新生成 DeepSeek 智能解读…
-        </text>
-      </view>
-
-      <!-- 3.2 AI 生成完成后的解读内容 -->
-      <view wx:elif="{{aiResult && aiResult.explanations && aiResult.explanations.length > 0}}" class="ai-box">
-        <view class="ai-box-title">
-          <text>💡 智能通俗饲喂指导</text>
-          <text wx:if="{{aiResult.ai_unavailable}}" class="tag-estimate">科学复核模式</text>
-        </view>
-        <view wx:for="{{aiResult.explanations}}" wx:key="*this" class="ai-text">
-          • {{item}}
-        </view>
-      </view>
-
-      <!-- 3.3 配方构成亮点 -->
-      <view class="insight-block">
-        <text class="insight-title">1. 配方构成亮点</text>
-        <view class="insight-content">
-          <text>• 选用 {{result.ration_insights.used_feed_count}} 种原料，粗饲料占干物质 {{result.ration_insights.forage_dm_pct}}%</text>
-          <text wx:if="{{result.ration_insights.top_me_sources && result.ration_insights.top_me_sources.length > 0}}">
-            • 主要能量来源：{{result.ration_insights.top_me_sources[0].name}} (贡献 {{result.ration_insights.top_me_sources[0].share_pct}}%)
-          </text>
-          <text wx:if="{{result.ration_insights.top_cp_sources && result.ration_insights.top_cp_sources.length > 0}}">
-            • 主要蛋白来源：{{result.ration_insights.top_cp_sources[0].name}} (贡献 {{result.ration_insights.top_cp_sources[0].share_pct}}%)
-          </text>
-        </view>
-      </view>
-
-      <!-- 3.4 日常饲喂管理建议 -->
-      <view class="insight-block" style="border-bottom: none;">
-        <text class="insight-title">2. 日常饲喂管理建议</text>
-        <view class="insight-content">
-          <view wx:for="{{result.management_tips}}" wx:key="*this" style="margin-bottom: 6rpx;">
-            • {{item}}
-          </view>
-        </view>
-      </view>
-    </view>
-
-    <!-- ============================================ -->
-    <!-- 顺序 4：其他（折叠卡片：未达标与贴边指标余量提醒） -->
-    <!-- ============================================ -->
+    <!-- ======================================================== -->
+    <!-- 其他：贴边指标与余量提醒（折叠） -->
+    <!-- ======================================================== -->
     <view class="card collapse-card">
       <view class="collapse-header" bindtap="toggleOtherDetails">
         <view class="collapse-title-row">
-          <text class="collapse-title">📌 其他：贴边指标与余量提醒</text>
+          <text class="collapse-title">📌 其他：贴边指标与算法机理说明</text>
           <text class="collapse-badge" wx:if="{{(result.ration_insights && result.ration_insights.boundary_flags.length > 0) || (result.violations && result.violations.length > 0)}}">
             {{result.violations && result.violations.length > 0 ? '有未达标项' : '有贴边指标'}}
           </text>
@@ -286,7 +365,7 @@
         <view style="margin-top: 16rpx;">
           <text class="sub-section-title">优化算法机理</text>
           <text class="form-hint" style="line-height: 1.5; color: #64748b;">
-            系统严格按照《奶山羊饲养管理技术规范》（NY/T 2835-2015）及《肉羊营养需要量》（NY/T 816-2021），在全项营养约束边界内使用单纯形法求解每日最低成本投喂组合。
+            系统严格按照《奶山羊饲养管理技术规范》（NY/T 2835-2015）及《肉羊营养需要量》（NY/T 816-2021），在全项营养约束边界内使用单纯形法求解全场规模化最低成本投喂组合。
           </text>
         </view>
       </view>
@@ -295,7 +374,7 @@
     <!-- 底部按钮 -->
     <view class="btn-row">
       <button class="btn-secondary" bindtap="handleBack">调整原料与价格</button>
-      <button class="btn-primary" bindtap="handleEditAnimal">重新填写羊只</button>
+      <button class="btn-primary" bindtap="handleEditAnimal">重新填写牧场</button>
     </view>
 
     <!-- 底部服务协议与免责声明入口 -->

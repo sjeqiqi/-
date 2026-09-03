@@ -1,30 +1,78 @@
 /* pages/index/index.wxss */
 
-.class-segmented-bar {
+.section-sub-header {
   display: flex;
-  background: #f1f5f9;
-  border-radius: 16rpx;
-  padding: 8rpx;
-  gap: 10rpx;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14rpx;
 }
 
-.class-seg-item {
-  flex: 1;
-  text-align: center;
-  padding: 20rpx 10rpx;
-  font-size: 27rpx;
+.sub-form-label {
+  font-size: 26rpx;
   font-weight: 600;
-  color: #64748b;
-  border-radius: 12rpx;
-  transition: all 0.25s ease;
+  color: #334155;
 }
 
-.class-seg-item.active {
-  background: #ffffff;
+/* 产区卡片列表 */
+.region-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.region-card-item {
+  background: #f8fafc;
+  border: 2rpx solid #e2e8f0;
+  border-radius: 18rpx;
+  padding: 20rpx 24rpx;
+  transition: all 0.2s ease;
+}
+
+.region-card-item.active {
+  background: #f0fdf4;
+  border-color: #059669;
+  box-shadow: 0 4rpx 14rpx rgba(5, 150, 105, 0.12);
+}
+
+.region-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6rpx;
+}
+
+.region-card-name {
+  font-size: 27rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.region-card-item.active .region-card-name {
   color: #059669;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
 }
 
+.region-card-badge {
+  font-size: 20rpx;
+  color: #64748b;
+  background: #e2e8f0;
+  border-radius: 8rpx;
+  padding: 2rpx 10rpx;
+  font-weight: 600;
+}
+
+.region-card-badge.active {
+  color: #ffffff;
+  background: #059669;
+}
+
+.region-card-desc {
+  font-size: 22rpx;
+  color: #64748b;
+  line-height: 1.4;
+  display: block;
+}
+
+/* 快捷芯片 */
 .quick-chips {
   display: flex;
   align-items: center;
@@ -53,6 +101,98 @@
   color: #059669;
   border-color: #a7f3d0;
   font-weight: 600;
+}
+
+/* 群体结构展示盒 */
+.herd-structure-box {
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 18rpx;
+  padding: 10rpx 14rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.herd-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 14rpx;
+  border-radius: 12rpx;
+  background: #ffffff;
+  border: 1rpx solid #f1f5f9;
+}
+
+.herd-row.highlight-lactating {
+  background: #f0fdf4;
+  border-color: #a7f3d0;
+}
+
+.herd-row-left {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.herd-icon-tag {
+  font-size: 34rpx;
+}
+
+.herd-stage-title {
+  font-size: 25rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.herd-stage-desc {
+  font-size: 20rpx;
+  color: #94a3b8;
+  display: block;
+}
+
+.herd-row-right {
+  text-align: right;
+}
+
+.herd-count-text {
+  font-size: 27rpx;
+  font-weight: 700;
+  color: #059669;
+  display: block;
+}
+
+.herd-pct-text {
+  font-size: 20rpx;
+  color: #64748b;
+  display: block;
+}
+
+/* 滑块控制器 */
+.slider-control-row {
+  display: flex;
+  align-items: center;
+  margin-top: 16rpx;
+  padding: 0 4rpx;
+}
+
+.slider-label {
+  font-size: 22rpx;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.herd-slider {
+  flex: 1;
+  margin: 0 14rpx;
+}
+
+.slider-val-tag {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #059669;
+  min-width: 55rpx;
+  text-align: right;
 }
 
 /* 智能称量仪器入口卡片 */

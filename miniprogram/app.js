@@ -16,6 +16,20 @@ App({
       milkKg: '2.5',
       milkFatPercent: '4.0'
     },
+    // 牧场基础信息（规模化管理视角）
+    pastureInfo: {
+      regionId: 'guanzhong',
+      regionName: '陕西关中优势产区',
+      totalFlockCount: 500,
+      herdStructure: {
+        lactatingPct: 70,
+        lactatingCount: 350,
+        growingPct: 20,
+        growingCount: 100,
+        lambPct: 10,
+        lambCount: 50
+      }
+    },
     feedForms: null,
     feedsMode: 'recommended',
     lastResult: null,

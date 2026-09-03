@@ -214,13 +214,15 @@ def calibrate_with_ai(
 
                     msg_obj = choices[0].get("message", {})
                     content = msg_obj.get("content") or ""
-                    if not content.strip() and msg_obj.get("reasoning_content"):
-                        content = msg_obj.get("reasoning_content", "")
+                    reasoning = msg_obj.get("reasoning_content") or ""
+                    if not content.strip() and reasoning:
+                        content = reasoning
 
                     validated = validate_ai_json(_extract_json(content))
                     return {
                         "status": "ok",
                         **validated,
+                        "thinking_process": reasoning.strip() if reasoning.strip() else None,
                         "ai_unavailable": False,
                         "fallback_reason": None,
                     }

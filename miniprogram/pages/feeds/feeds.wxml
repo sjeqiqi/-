@@ -4,7 +4,7 @@
   <view class="steps-bar">
     <view class="step-item completed">
       <view class="step-icon">✓</view>
-      <text class="step-text">羊只信息</text>
+      <text class="step-text">牧场信息</text>
     </view>
     <view class="step-item active">
       <view class="step-icon">2</view>
@@ -14,6 +14,23 @@
       <view class="step-icon">3</view>
       <text class="step-text">配方结果</text>
     </view>
+  </view>
+
+  <!-- 产区采购行情与营养数据库联动指示条 -->
+  <view class="region-indicator-card">
+    <view class="region-indicator-left">
+      <text class="region-indicator-icon">📍</text>
+      <view>
+        <view style="display: flex; align-items: center; gap: 10rpx;">
+          <text class="region-indicator-title">{{regionName}}</text>
+          <text class="badge-green" style="font-size: 18rpx; padding: 2rpx 10rpx;">行情已联动</text>
+        </view>
+        <text class="region-indicator-sub">{{regionNote}}</text>
+      </view>
+    </view>
+    <button class="btn-restore-region" bindtap="restoreRegionDefaults">
+      ↺ 还原产区默认
+    </button>
   </view>
 
   <!-- 模式切换与快捷控制卡片 -->
