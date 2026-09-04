@@ -111,7 +111,7 @@
   padding: 10rpx 14rpx;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 10rpx;
 }
 
 .herd-row {
@@ -119,24 +119,38 @@
   justify-content: space-between;
   align-items: center;
   padding: 16rpx 14rpx;
-  border-radius: 12rpx;
+  border-radius: 14rpx;
   background: #ffffff;
-  border: 1rpx solid #f1f5f9;
+  border: 1.5rpx solid #f1f5f9;
+  transition: all 0.2s ease;
 }
 
-.herd-row.highlight-lactating {
+.herd-row.highlight-core {
   background: #f0fdf4;
-  border-color: #a7f3d0;
+  border-color: #6ee7b7;
+  box-shadow: 0 2rpx 8rpx rgba(5, 150, 105, 0.12);
 }
 
 .herd-row-left {
   display: flex;
   align-items: center;
   gap: 14rpx;
+  flex: 1;
+}
+
+.herd-info-col {
+  flex: 1;
+}
+
+.herd-title-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  flex-wrap: wrap;
 }
 
 .herd-icon-tag {
-  font-size: 34rpx;
+  font-size: 36rpx;
 }
 
 .herd-stage-title {
@@ -149,23 +163,109 @@
   font-size: 20rpx;
   color: #94a3b8;
   display: block;
+  margin-top: 2rpx;
+}
+
+.core-active-badge {
+  font-size: 18rpx;
+  color: #047857;
+  background: #d1fae5;
+  border: 1rpx solid #a7f3d0;
+  border-radius: 6rpx;
+  padding: 2rpx 10rpx;
+  font-weight: 700;
+}
+
+.core-select-btn {
+  font-size: 18rpx;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 6rpx;
+  padding: 2rpx 10rpx;
+  font-weight: 500;
 }
 
 .herd-row-right {
-  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  margin-left: 12rpx;
 }
 
-.herd-count-text {
-  font-size: 27rpx;
+.herd-number-field {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.herd-pct-field {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  margin-top: 6rpx;
+}
+
+.herd-count-input {
+  width: 96rpx;
+  height: 44rpx;
+  text-align: right;
+  font-size: 26rpx;
   font-weight: 700;
   color: #059669;
-  display: block;
+  background: #ffffff;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 8rpx;
+  padding: 0 8rpx;
 }
 
-.herd-pct-text {
+.herd-pct-input {
+  width: 72rpx;
+  height: 38rpx;
+  text-align: right;
   font-size: 20rpx;
+  font-weight: 600;
+  color: #475569;
+  background: #ffffff;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 6rpx;
+  padding: 0 6rpx;
+}
+
+.herd-unit-label {
+  font-size: 21rpx;
   color: #64748b;
-  display: block;
+  font-weight: 600;
+}
+
+.herd-pct-prefix {
+  font-size: 19rpx;
+  color: #94a3b8;
+}
+
+.stage-notice-card {
+  display: flex;
+  gap: 12rpx;
+  align-items: flex-start;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-left: 6rpx solid #059669;
+  border-radius: 12rpx;
+  padding: 16rpx 18rpx;
+  margin-bottom: 20rpx;
+}
+
+.stage-notice-icon {
+  font-size: 30rpx;
+  line-height: 1.2;
+}
+
+.stage-notice-text {
+  font-size: 22rpx;
+  color: #475569;
+  line-height: 1.5;
+  flex: 1;
 }
 
 /* 滑块控制器 */

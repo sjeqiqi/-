@@ -38,18 +38,29 @@ Page({
     totalFlockCount: '500',
     presetFlocks: ['100', '300', '500', '1000', '2000'],
 
-    // 3. 群体结构分布与占比 (维持期先隐藏，系统重点聚焦泌乳期核心生产群)
-    lactatingPct: 70, // 核心生产群
-    growingPct: 20,   // 青年育成羊
-    lambPct: 10,      // 幼年期羔羊
+    // 3. 核心计算群选择：'lactating' (泌乳群) | 'growing' (青年羊) | 'lamb' (羔羊)
+    coreTarget: 'lactating',
+    coreTargetName: '成年泌乳期核心生产群',
+
+    // 各阶段羊只数与占比（支持直接输入数字）
+    lactatingPct: 70,
     lactatingCount: 350,
+    growingPct: 20,
     growingCount: 100,
+    lambPct: 10,
     lambCount: 50,
 
-    // 4. 核心泌乳羊生理指标微调 (预设科学默认值，支持微调)
+    // 4. 生理指标微调（随核心计算群动态适配）
+    // 泌乳母羊参数
     bodyWeightKg: '50',
     milkKg: '2.5',
     milkFatPercent: '4.0',
+
+    // 青年育成羊参数（默认35kg）
+    growingWeightKg: '35',
+
+    // 幼年期羔羊参数（默认28kg）
+    lambWeightKg: '28',
 
     errorMessage: ''
   },
@@ -62,18 +73,21 @@ Page({
       const rIdx = this.data.regions.findIndex(r => r.id === globalPasture.regionId);
       const total = globalPasture.totalFlockCount || 500;
       const struct = globalPasture.herdStructure || {};
+      const core = globalPasture.coreTarget || 'lactating';
+      const coreName = globalPasture.coreTargetName || '成年泌乳期核心生产群';
       
       this.setData({
         selectedRegionIndex: rIdx >= 0 ? rIdx : 0,
         totalFlockCount: String(total),
+        coreTarget: core,
+        coreTargetName: coreName,
         lactatingPct: struct.lactatingPct !== undefined ? struct.lactatingPct : 70,
+        lactatingCount: struct.lactatingCount !== undefined ? struct.lactatingCount : 350,
         growingPct: struct.growingPct !== undefined ? struct.growingPct : 20,
-        lambPct: struct.lambPct !== undefined ? struct.lambPct : 10
-      }, () => {
-        this.recalcHerdCounts();
+        growingCount: struct.growingCount !== undefined ? struct.growingCount : 100,
+        lambPct: struct.lambPct !== undefined ? struct.lambPct : 10,
+        lambCount: struct.lambCount !== undefined ? struct.lambCount : 50
       });
-    } else {
-      this.recalcHerdCounts();
     }
 
     if (globalAnimal) {
@@ -106,6 +120,104 @@ Page({
     });
   },
 
+  // 切换核心计算群
+  selectCoreTarget(e) {
+    const target = e.currentTarget.dataset.target;
+    let name = '成年泌乳期核心生产群';
+    if (target === 'growing') name = '青年育成羊';
+    if (target === 'lamb') name = '幼年期羔羊';
+
+    this.setData({
+      coreTarget: target,
+      coreTargetName: name,
+      errorMessage: ''
+    });
+
+    wx.showToast({
+      title: `核心计算群已切换为：${name}`,
+      icon: 'none'
+    });
+  },
+
+  stopPropagation() {
+    // 阻止冒泡
+  },
+
+  // 直接改数字：用户输入某阶段的只数
+  onHerdCountInput(e) {
+    const stage = e.currentTarget.dataset.stage;
+    let val = parseInt(e.detail.value);
+    if (isNaN(val) || val < 0) val = 0;
+
+    let lCount = parseInt(this.data.lactatingCount) || 0;
+    let gCount = parseInt(this.data.growingCount) || 0;
+    let lambCount = parseInt(this.data.lambCount) || 0;
+
+    if (stage === 'lactating') lCount = val;
+    else if (stage === 'growing') gCount = val;
+    else if (stage === 'lamb') lambCount = val;
+
+    const newTotal = lCount + gCount + lambCount;
+    let lPct = newTotal > 0 ? Math.round((lCount / newTotal) * 100) : 0;
+    let gPct = newTotal > 0 ? Math.round((gCount / newTotal) * 100) : 0;
+    let lambPct = newTotal > 0 ? Math.max(0, 100 - lPct - gPct) : 0;
+
+    this.setData({
+      totalFlockCount: String(newTotal),
+      lactatingCount: lCount,
+      growingCount: gCount,
+      lambCount: lambCount,
+      lactatingPct: lPct,
+      growingPct: gPct,
+      lambPct: lambPct,
+      errorMessage: ''
+    });
+  },
+
+  // 直接改数字：用户输入某阶段的占比 %
+  onHerdPctInput(e) {
+    const stage = e.currentTarget.dataset.stage;
+    let val = parseInt(e.detail.value);
+    if (isNaN(val) || val < 0) val = 0;
+    if (val > 100) val = 100;
+
+    const total = parseInt(this.data.totalFlockCount) || 500;
+    let lPct = parseInt(this.data.lactatingPct) || 0;
+    let gPct = parseInt(this.data.growingPct) || 0;
+    let lambPct = parseInt(this.data.lambPct) || 0;
+
+    if (stage === 'lactating') {
+      lPct = val;
+      const rem = 100 - lPct;
+      gPct = Math.round(rem * (2 / 3));
+      lambPct = Math.max(0, rem - gPct);
+    } else if (stage === 'growing') {
+      gPct = val;
+      const rem = 100 - gPct;
+      lPct = Math.round(rem * 0.7);
+      lambPct = Math.max(0, rem - lPct);
+    } else if (stage === 'lamb') {
+      lambPct = val;
+      const rem = 100 - lambPct;
+      lPct = Math.round(rem * 0.7);
+      gPct = Math.max(0, rem - lPct);
+    }
+
+    const lCount = Math.round(total * (lPct / 100));
+    const gCount = Math.round(total * (gPct / 100));
+    const lambCount = Math.max(0, total - lCount - gCount);
+
+    this.setData({
+      lactatingPct: lPct,
+      growingPct: gPct,
+      lambPct: lambPct,
+      lactatingCount: lCount,
+      growingCount: gCount,
+      lambCount: lambCount,
+      errorMessage: ''
+    });
+  },
+
   // 羊群总存栏输入与快捷芯片
   onTotalFlockInput(e) {
     this.setData({
@@ -126,13 +238,12 @@ Page({
     });
   },
 
-  // 群体结构百分比滑块变动
+  // 滑块微调
   onLactatingSliderChange(e) {
     let lPct = Number(e.detail.value);
-    // 剩余百分比按 2:1 动态分配给青年羊和幼年羔羊
     let remaining = 100 - lPct;
     let gPct = Math.round(remaining * (2 / 3));
-    let lambPct = 100 - lPct - gPct;
+    let lambPct = Math.max(0, 100 - lPct - gPct);
 
     this.setData({
       lactatingPct: lPct,
@@ -143,7 +254,7 @@ Page({
     });
   },
 
-  // 根据总存栏量与百分比自动重新计算各阶段只数
+  // 根据总存栏量重新折算各阶段只数
   recalcHerdCounts() {
     const total = parseInt(this.data.totalFlockCount) || 0;
     const lCount = Math.round(total * (this.data.lactatingPct / 100));
@@ -157,15 +268,21 @@ Page({
     });
   },
 
-  // 核心生产群单羊生理指标微调
+  // 生理指标调优
   quickSetWeight(e) {
-    const val = e.currentTarget.dataset.val;
-    this.setData({ bodyWeightKg: val, errorMessage: '' });
+    this.setData({ bodyWeightKg: e.currentTarget.dataset.val, errorMessage: '' });
   },
 
   quickSetMilk(e) {
-    const val = e.currentTarget.dataset.val;
-    this.setData({ milkKg: val, errorMessage: '' });
+    this.setData({ milkKg: e.currentTarget.dataset.val, errorMessage: '' });
+  },
+
+  quickSetGrowingWeight(e) {
+    this.setData({ growingWeightKg: e.currentTarget.dataset.val, errorMessage: '' });
+  },
+
+  quickSetLambWeight(e) {
+    this.setData({ lambWeightKg: e.currentTarget.dataset.val, errorMessage: '' });
   },
 
   onWeightInput(e) {
@@ -180,26 +297,45 @@ Page({
     this.setData({ milkFatPercent: e.detail.value, errorMessage: '' });
   },
 
+  onGrowingWeightInput(e) {
+    this.setData({ growingWeightKg: e.detail.value, errorMessage: '' });
+  },
+
+  onLambWeightInput(e) {
+    this.setData({ lambWeightKg: e.detail.value, errorMessage: '' });
+  },
+
   validate() {
     const total = parseInt(this.data.totalFlockCount);
     if (isNaN(total) || total < 10 || total > 50000) {
       return '请输入 10 – 50,000 只之间的牧场总存栏量';
     }
 
-    const w = parseFloat(this.data.bodyWeightKg);
-    if (isNaN(w) || w < 25 || w > 90) {
-      return '请输入 25 – 90 kg 之间的核心泌乳羊均重';
-    }
-
-    const m = parseFloat(this.data.milkKg);
-    if (isNaN(m) || m < 0.2 || m > 5.0) {
-      return '请输入 0.2 – 5.0 kg/天 之间的日均产奶量';
-    }
-
-    if (this.data.milkFatPercent && this.data.milkFatPercent.trim() !== '') {
-      const f = parseFloat(this.data.milkFatPercent);
-      if (isNaN(f) || f < 2.0 || f > 7.0) {
-        return '乳脂率请填写 2.0 – 7.0% 之间的数值，也可留空默认 4.0%';
+    const core = this.data.coreTarget;
+    if (core === 'lactating') {
+      const w = parseFloat(this.data.bodyWeightKg);
+      if (isNaN(w) || w < 25 || w > 90) {
+        return '请输入 25 – 90 kg 之间的核心泌乳羊均重';
+      }
+      const m = parseFloat(this.data.milkKg);
+      if (isNaN(m) || m < 0.2 || m > 5.0) {
+        return '请输入 0.2 – 5.0 kg/天 之间的日均产奶量';
+      }
+      if (this.data.milkFatPercent && this.data.milkFatPercent.trim() !== '') {
+        const f = parseFloat(this.data.milkFatPercent);
+        if (isNaN(f) || f < 2.0 || f > 7.0) {
+          return '乳脂率请填写 2.0 – 7.0% 之间的数值，也可留空默认 4.0%';
+        }
+      }
+    } else if (core === 'growing') {
+      const w = parseFloat(this.data.growingWeightKg);
+      if (isNaN(w) || w < 25 || w > 60) {
+        return '请输入 25 – 60 kg 之间的青年羊均重';
+      }
+    } else if (core === 'lamb') {
+      const w = parseFloat(this.data.lambWeightKg);
+      if (isNaN(w) || w < 25 || w > 45) {
+        return '请输入 25 – 45 kg 之间的羔羊均重';
       }
     }
 
@@ -216,12 +352,36 @@ Page({
 
     const selRegion = this.data.regions[this.data.selectedRegionIndex];
     const totalFlock = parseInt(this.data.totalFlockCount) || 500;
+    const core = this.data.coreTarget;
 
-    // 1. 牧场规模化基础信息保存全局
+    let coreCount = this.data.lactatingCount;
+    let animalClass = 'lactating';
+    let bodyWeight = this.data.bodyWeightKg;
+    let milk = this.data.milkKg;
+    let fat = this.data.milkFatPercent || '4.0';
+
+    if (core === 'growing') {
+      coreCount = this.data.growingCount;
+      animalClass = 'maintenance';
+      bodyWeight = this.data.growingWeightKg || '35';
+      milk = null;
+      fat = null;
+    } else if (core === 'lamb') {
+      coreCount = this.data.lambCount;
+      animalClass = 'maintenance';
+      bodyWeight = this.data.lambWeightKg || '28';
+      milk = null;
+      fat = null;
+    }
+
+    // 1. 保存牧场信息
     app.globalData.pastureInfo = {
       regionId: selRegion.id,
       regionName: selRegion.name,
       totalFlockCount: totalFlock,
+      coreTarget: core,
+      coreTargetName: this.data.coreTargetName,
+      coreCount: coreCount,
       herdStructure: {
         lactatingPct: this.data.lactatingPct,
         lactatingCount: this.data.lactatingCount,
@@ -232,12 +392,12 @@ Page({
       }
     };
 
-    // 2. 核心生产群日粮计算指标保存全局
+    // 2. 保存核心计算群的生理指标
     app.globalData.animalForm = {
-      class: 'lactating', // 聚焦核心生产群
-      bodyWeightKg: this.data.bodyWeightKg,
-      milkKg: this.data.milkKg,
-      milkFatPercent: this.data.milkFatPercent || '4.0'
+      class: animalClass,
+      bodyWeightKg: String(bodyWeight),
+      milkKg: milk ? String(milk) : null,
+      milkFatPercent: fat ? String(fat) : null
     };
 
     wx.navigateTo({

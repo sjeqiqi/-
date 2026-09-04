@@ -286,7 +286,7 @@
       <!-- 全场总用量汇总横幅 -->
       <view class="flock-summary-banner">
         <view class="flock-summary-title">
-          🐑 全场生产群（{{result.flock_totals.lactating_count}} 只成年泌乳羊）每日原料总消耗：
+          🐑 全场核心计算群（{{result.flock_totals.core_count}} 只 {{result.flock_totals.core_name || '成年泌乳羊'}}）每日原料总消耗：
         </view>
         <view class="flock-summary-numbers">
           <view class="flock-num-item">
@@ -295,7 +295,7 @@
           </view>
           <view class="flock-num-item" style="text-align: right;">
             <text class="flock-num-val" style="color: #d97706;">¥{{result.flock_totals.cost_daily_rmb}}</text>
-            <text class="flock-num-unit">全场日粮总成本</text>
+            <text class="flock-num-unit">核心群日粮总成本</text>
           </view>
         </view>
       </view>

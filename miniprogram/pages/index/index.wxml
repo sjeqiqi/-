@@ -78,70 +78,136 @@
       </view>
     </view>
 
-    <!-- 3. 群体结构分布与占比 (隐藏维持期，聚焦核心生产群) -->
+    <!-- 3. 群体结构分布与占比 (支持直接修改数字与切换核心计算群) -->
     <view class="form-group" style="margin-top: 28rpx;">
       <view class="section-sub-header">
-        <text class="form-label" style="margin-bottom: 0;">📊 群体结构分布与占比</text>
-        <text class="form-hint" style="margin-top: 0;">重点聚焦泌乳期核心生产群</text>
+        <text class="form-label" style="margin-bottom: 0;">📊 群体结构分布与核心计算群</text>
+        <text class="form-hint" style="margin-top: 0;">可直接修改只数/占比，点击卡片切换计算主体</text>
       </view>
 
       <!-- 结构卡片展示 -->
       <view class="herd-structure-box">
-        <!-- 核心泌乳期生产群 -->
-        <view class="herd-row highlight-lactating">
+        <!-- 1. 成年泌乳期生产群 -->
+        <view class="herd-row {{coreTarget === 'lactating' ? 'highlight-core' : ''}}" bindtap="selectCoreTarget" data-target="lactating">
           <view class="herd-row-left">
             <view class="herd-icon-tag">🥛</view>
-            <view>
-              <view style="display: flex; align-items: center; gap: 8rpx;">
-                <text class="herd-stage-title">成年泌乳期核心生产群</text>
-                <text class="badge-green" style="font-size: 18rpx; padding: 2rpx 8rpx;">核心计算群</text>
+            <view class="herd-info-col">
+              <view class="herd-title-badge-row">
+                <text class="herd-stage-title">成年泌乳期生产群</text>
+                <view wx:if="{{coreTarget === 'lactating'}}" class="core-active-badge">✓ 核心计算群</view>
+                <view wx:else class="core-select-btn">设为核心群</view>
               </view>
-              <text class="herd-stage-desc">日粮配方测算主体，直接决定产奶效益</text>
+              <text class="herd-stage-desc">日粮配方测算主体，直接决定产奶效益与体况</text>
             </view>
           </view>
-          <view class="herd-row-right">
-            <text class="herd-count-text">{{lactatingCount}} 只</text>
-            <text class="herd-pct-text">占比 {{lactatingPct}}%</text>
+          <view class="herd-row-right" catchtap="stopPropagation">
+            <view class="herd-number-field">
+              <input 
+                class="herd-count-input" 
+                type="number" 
+                value="{{lactatingCount}}" 
+                bindinput="onHerdCountInput" 
+                data-stage="lactating" 
+              />
+              <text class="herd-unit-label">只</text>
+            </view>
+            <view class="herd-pct-field">
+              <text class="herd-pct-prefix">占</text>
+              <input 
+                class="herd-pct-input" 
+                type="number" 
+                value="{{lactatingPct}}" 
+                bindinput="onHerdPctInput" 
+                data-stage="lactating" 
+              />
+              <text class="herd-unit-label">%</text>
+            </view>
           </view>
         </view>
 
-        <!-- 青年育成羊 -->
-        <view class="herd-row">
+        <!-- 2. 青年育成羊 -->
+        <view class="herd-row {{coreTarget === 'growing' ? 'highlight-core' : ''}}" bindtap="selectCoreTarget" data-target="growing">
           <view class="herd-row-left">
             <view class="herd-icon-tag">🌿</view>
-            <view>
-              <text class="herd-stage-title">青年育成羊 (3–12月龄)</text>
-              <text class="herd-stage-desc">骨骼与体成熟期后备种群</text>
+            <view class="herd-info-col">
+              <view class="herd-title-badge-row">
+                <text class="herd-stage-title">青年育成羊 (3–12月龄)</text>
+                <view wx:if="{{coreTarget === 'growing'}}" class="core-active-badge">✓ 核心计算群</view>
+                <view wx:else class="core-select-btn">设为核心群</view>
+              </view>
+              <text class="herd-stage-desc">骨骼与体成熟期后备种群，生长与维持营养目标</text>
             </view>
           </view>
-          <view class="herd-row-right">
-            <text class="herd-count-text">{{growingCount}} 只</text>
-            <text class="herd-pct-text">占比 {{growingPct}}%</text>
+          <view class="herd-row-right" catchtap="stopPropagation">
+            <view class="herd-number-field">
+              <input 
+                class="herd-count-input" 
+                type="number" 
+                value="{{growingCount}}" 
+                bindinput="onHerdCountInput" 
+                data-stage="growing" 
+              />
+              <text class="herd-unit-label">只</text>
+            </view>
+            <view class="herd-pct-field">
+              <text class="herd-pct-prefix">占</text>
+              <input 
+                class="herd-pct-input" 
+                type="number" 
+                value="{{growingPct}}" 
+                bindinput="onHerdPctInput" 
+                data-stage="growing" 
+              />
+              <text class="herd-unit-label">%</text>
+            </view>
           </view>
         </view>
 
-        <!-- 幼年期羔羊 -->
-        <view class="herd-row">
+        <!-- 3. 幼年期羔羊 -->
+        <view class="herd-row {{coreTarget === 'lamb' ? 'highlight-core' : ''}}" bindtap="selectCoreTarget" data-target="lamb">
           <view class="herd-row-left">
             <view class="herd-icon-tag">🍼</view>
-            <view>
-              <text class="herd-stage-title">幼年期羔羊 (0–3月龄)</text>
-              <text class="herd-stage-desc">哺乳及瘤胃发育初期幼羊</text>
+            <view class="herd-info-col">
+              <view class="herd-title-badge-row">
+                <text class="herd-stage-title">幼年期羔羊 (0–3月龄)</text>
+                <view wx:if="{{coreTarget === 'lamb'}}" class="core-active-badge">✓ 核心计算群</view>
+                <view wx:else class="core-select-btn">设为核心群</view>
+              </view>
+              <text class="herd-stage-desc">哺乳及瘤胃发育初期幼羊，高蛋白易消化需求</text>
             </view>
           </view>
-          <view class="herd-row-right">
-            <text class="herd-count-text">{{lambCount}} 只</text>
-            <text class="herd-pct-text">占比 {{lambPct}}%</text>
+          <view class="herd-row-right" catchtap="stopPropagation">
+            <view class="herd-number-field">
+              <input 
+                class="herd-count-input" 
+                type="number" 
+                value="{{lambCount}}" 
+                bindinput="onHerdCountInput" 
+                data-stage="lamb" 
+              />
+              <text class="herd-unit-label">只</text>
+            </view>
+            <view class="herd-pct-field">
+              <text class="herd-pct-prefix">占</text>
+              <input 
+                class="herd-pct-input" 
+                type="number" 
+                value="{{lambPct}}" 
+                bindinput="onHerdPctInput" 
+                data-stage="lamb" 
+              />
+              <text class="herd-unit-label">%</text>
+            </view>
           </view>
         </view>
       </view>
 
       <!-- 泌乳期占比微调滑块 -->
       <view class="slider-control-row">
-        <text class="slider-label">核心泌乳群占比微调：</text>
+        <text class="slider-label">核心泌乳群占比快捷滑块：</text>
         <slider 
           class="herd-slider" 
-          min="50" 
+          min="40" 
           max="90" 
           step="5" 
           value="{{lactatingPct}}" 
@@ -152,85 +218,158 @@
         <text class="slider-val-tag">{{lactatingPct}}%</text>
       </view>
       <text class="form-hint" style="margin-top: 6rpx;">
-        💡 提示：系统优先聚焦成年泌乳群精准日粮求解，并按全场规模联动换算采购配料总吨位。
+        💡 提示：支持直接点击输入框修改只数或占比。系统将以选定的【核心计算群】只数联动折算全场日配料总吨位。
       </text>
     </view>
 
-    <!-- 4. 核心生产群单羊生理指标微调 -->
+    <!-- 4. 核心计算群生理指标微调 -->
     <view class="form-group" style="margin-top: 28rpx;">
       <view class="section-sub-header">
-        <text class="form-label" style="margin-bottom: 0;">⚙️ 核心泌乳羊生理指标微调</text>
-        <text class="form-hint" style="margin-top: 0;">已预置科学默认值，可按需修改</text>
+        <text class="form-label" style="margin-bottom: 0;">⚙️ {{coreTargetName}} 生理指标配置</text>
+        <text class="form-hint" style="margin-top: 0;">已预置科学标准，支持按需自定义微调</text>
       </view>
 
-      <!-- 体重 -->
-      <view style="margin-bottom: 20rpx;">
-        <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10rpx;">
-          <text class="sub-form-label">羊只均重 (kg)</text>
-          <text class="form-hint" style="margin-top: 0;">范围 25 – 90 kg</text>
-        </view>
-        <input 
-          class="form-input" 
-          type="digit" 
-          placeholder="例如 50" 
-          value="{{bodyWeightKg}}" 
-          bindinput="onWeightInput"
-        />
-        <view class="quick-chips">
-          <text class="quick-chip-label">快捷填入：</text>
-          <view 
-            wx:for="{{['45', '50', '55', '60', '70']}}" 
-            wx:key="*this" 
-            class="chip-item {{bodyWeightKg === item ? 'chip-active' : ''}}"
-            bindtap="quickSetWeight"
-            data-val="{{item}}"
-          >
-            {{item}}kg
+      <!-- 4.1 当核心计算群为 成年泌乳期生产群 时 -->
+      <block wx:if="{{coreTarget === 'lactating'}}">
+        <!-- 体重 -->
+        <view style="margin-bottom: 20rpx;">
+          <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10rpx;">
+            <text class="sub-form-label">母羊均重 (kg)</text>
+            <text class="form-hint" style="margin-top: 0;">范围 25 – 90 kg</text>
+          </view>
+          <input 
+            class="form-input" 
+            type="digit" 
+            placeholder="例如 50" 
+            value="{{bodyWeightKg}}" 
+            bindinput="onWeightInput"
+          />
+          <view class="quick-chips">
+            <text class="quick-chip-label">快捷填入：</text>
+            <view 
+              wx:for="{{['45', '50', '55', '60', '70']}}" 
+              wx:key="*this" 
+              class="chip-item {{bodyWeightKg === item ? 'chip-active' : ''}}"
+              bindtap="quickSetWeight"
+              data-val="{{item}}"
+            >
+              {{item}}kg
+            </view>
           </view>
         </view>
-      </view>
 
-      <!-- 日均产奶量 -->
-      <view style="margin-bottom: 20rpx;">
-        <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10rpx;">
-          <text class="sub-form-label">日均产奶量 (kg/天)</text>
-          <text class="form-hint" style="margin-top: 0;">范围 0.2 – 5.0 kg/天</text>
-        </view>
-        <input 
-          class="form-input" 
-          type="digit" 
-          placeholder="例如 2.5" 
-          value="{{milkKg}}" 
-          bindinput="onMilkInput"
-        />
-        <view class="quick-chips">
-          <text class="quick-chip-label">快捷填入：</text>
-          <view 
-            wx:for="{{['1.5', '2.0', '2.5', '3.0', '3.5']}}" 
-            wx:key="*this" 
-            class="chip-item {{milkKg === item ? 'chip-active' : ''}}"
-            bindtap="quickSetMilk"
-            data-val="{{item}}"
-          >
-            {{item}}kg
+        <!-- 日均产奶量 -->
+        <view style="margin-bottom: 20rpx;">
+          <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10rpx;">
+            <text class="sub-form-label">日均产奶量 (kg/天)</text>
+            <text class="form-hint" style="margin-top: 0;">范围 0.2 – 5.0 kg/天</text>
+          </view>
+          <input 
+            class="form-input" 
+            type="digit" 
+            placeholder="例如 2.5" 
+            value="{{milkKg}}" 
+            bindinput="onMilkInput"
+          />
+          <view class="quick-chips">
+            <text class="quick-chip-label">快捷填入：</text>
+            <view 
+              wx:for="{{['1.5', '2.0', '2.5', '3.0', '3.5']}}" 
+              wx:key="*this" 
+              class="chip-item {{milkKg === item ? 'chip-active' : ''}}"
+              bindtap="quickSetMilk"
+              data-val="{{item}}"
+            >
+              {{item}}kg
+            </view>
           </view>
         </view>
-      </view>
 
-      <!-- 乳脂率 -->
-      <view>
-        <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10rpx;">
-          <text class="sub-form-label">目标乳脂率 (%, 可选)</text>
-          <text class="form-hint" style="margin-top: 0;">预设 4.0%</text>
+        <!-- 乳脂率 -->
+        <view>
+          <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10rpx;">
+            <text class="sub-form-label">目标乳脂率 (%, 可选)</text>
+            <text class="form-hint" style="margin-top: 0;">预设 4.0%</text>
+          </view>
+          <input 
+            class="form-input" 
+            type="digit" 
+            placeholder="留空默认 4.0%" 
+            value="{{milkFatPercent}}" 
+            bindinput="onFatInput"
+          />
         </view>
-        <input 
-          class="form-input" 
-          type="digit" 
-          placeholder="留空默认 4.0%" 
-          value="{{milkFatPercent}}" 
-          bindinput="onFatInput"
-        />
-      </view>
+      </block>
+
+      <!-- 4.2 当核心计算群为 青年育成羊 时 -->
+      <block wx:elif="{{coreTarget === 'growing'}}">
+        <view class="stage-notice-card">
+          <text class="stage-notice-icon">🌿</text>
+          <view class="stage-notice-text">
+            青年育成阶段（3–12月龄）：重点保障骨骼发育与瘤胃容积扩张，粗饲料占干物质比重通常 ≥65%，无需产奶指标。
+          </view>
+        </view>
+        <view style="margin-bottom: 20rpx;">
+          <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10rpx;">
+            <text class="sub-form-label">青年羊均重 (kg)</text>
+            <text class="form-hint" style="margin-top: 0;">范围 25 – 60 kg</text>
+          </view>
+          <input 
+            class="form-input" 
+            type="digit" 
+            placeholder="例如 35" 
+            value="{{growingWeightKg}}" 
+            bindinput="onGrowingWeightInput"
+          />
+          <view class="quick-chips">
+            <text class="quick-chip-label">快捷填入：</text>
+            <view 
+              wx:for="{{['25', '30', '35', '40', '45']}}" 
+              wx:key="*this" 
+              class="chip-item {{growingWeightKg === item ? 'chip-active' : ''}}"
+              bindtap="quickSetGrowingWeight"
+              data-val="{{item}}"
+            >
+              {{item}}kg
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 4.3 当核心计算群为 幼年期羔羊 时 -->
+      <block wx:elif="{{coreTarget === 'lamb'}}">
+        <view class="stage-notice-card">
+          <text class="stage-notice-icon">🍼</text>
+          <view class="stage-notice-text">
+            幼年羔羊阶段（0–3月龄/育肥初期）：处于瘤胃微生物定植关键期，日粮重点满足肌肉与骨骼高增重需要，兼顾高适口性与高易消化性。
+          </view>
+        </view>
+        <view style="margin-bottom: 20rpx;">
+          <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10rpx;">
+            <text class="sub-form-label">羔羊均重 (kg)</text>
+            <text class="form-hint" style="margin-top: 0;">范围 25 – 45 kg</text>
+          </view>
+          <input 
+            class="form-input" 
+            type="digit" 
+            placeholder="例如 28" 
+            value="{{lambWeightKg}}" 
+            bindinput="onLambWeightInput"
+          />
+          <view class="quick-chips">
+            <text class="quick-chip-label">快捷填入：</text>
+            <view 
+              wx:for="{{['25', '28', '30', '35']}}" 
+              wx:key="*this" 
+              class="chip-item {{lambWeightKg === item ? 'chip-active' : ''}}"
+              bindtap="quickSetLambWeight"
+              data-val="{{item}}"
+            >
+              {{item}}kg
+            </view>
+          </view>
+        </view>
+      </block>
     </view>
 
     <!-- 错误提示 -->
