@@ -587,6 +587,7 @@ ${stage1Details}
     const totalFlockDailyCost = totalCostPerGoat * coreCount;
 
     res.flock_totals = {
+      calc_mode: pasture.calcMode || 'pasture',
       core_name: coreName,
       core_count: coreCount,
       lactating_count: coreCount, // 保持旧字段名向下兼容

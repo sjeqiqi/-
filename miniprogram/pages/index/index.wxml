@@ -19,15 +19,33 @@
   <!-- 表单主体卡片 -->
   <view class="card">
     <view class="card-title">
-      <text>🏡 第一步：填写牧场信息</text>
-      <text class="badge-green">规模化牧场管理</text>
+      <text>{{calcMode === 'pasture' ? '🏡 第一步：填写牧场信息' : '🐐 第一步：填写单羊信息'}}</text>
+      <text class="badge-green">{{calcMode === 'pasture' ? '规模化牧场管理' : '单只个体精准'}}</text>
     </view>
     <view class="card-subtitle">
-      覆盖全国奶山羊优势产区与群体结构，支持精准科学核算与全场原料用量联动。
+      {{calcMode === 'pasture' ? '覆盖全国奶山羊优势产区与群体结构，支持精准科学核算与全场原料用量联动。' : '按单只羊的实际生理阶段填写，系统自动核算每日基础维持与生产营养需要。'}}
     </view>
 
-    <!-- 1. 全国奶山羊优势主产区选择 -->
-    <view class="form-group">
+    <!-- 顶部分段模式切换开关 -->
+    <view class="calc-mode-segmented-bar">
+      <view 
+        class="calc-mode-item {{calcMode === 'pasture' ? 'active' : ''}}" 
+        bindtap="switchCalcMode" 
+        data-mode="pasture"
+      >
+        🏢 规模化牧场模式 (群体)
+      </view>
+      <view 
+        class="calc-mode-item {{calcMode === 'single' ? 'active' : ''}}" 
+        bindtap="switchCalcMode" 
+        data-mode="single"
+      >
+        🐐 单只精准模式 (个体)
+      </view>
+    </view>
+
+    <!-- 1. 全国奶山羊优势主产区选择 (两种模式均支持联动产区行情) -->
+    <view class="form-group" style="margin-top: 24rpx;">
       <view class="section-sub-header">
         <text class="form-label" style="margin-bottom: 0;">📍 优势主产区选择</text>
         <text class="form-hint" style="margin-top: 0;">自动联动产区采购行情与营养库</text>
@@ -50,19 +68,23 @@
       </view>
     </view>
 
-    <!-- 2. 羊群总存栏量 -->
-    <view class="form-group" style="margin-top: 28rpx;">
-      <view class="section-sub-header">
-        <text class="form-label" style="margin-bottom: 0;">🐑 羊群总存栏量 (只)</text>
-        <text class="form-hint" style="margin-top: 0;">用于全场日耗料量与采购核算</text>
-      </view>
-      <input 
-        class="form-input" 
-        type="number" 
-        placeholder="例如 500" 
-        value="{{totalFlockCount}}" 
-        bindinput="onTotalFlockInput"
-      />
+    <!-- ======================================================= -->
+    <!-- 模式 A：规模化牧场模式 (群体结构分布与全场联动)            -->
+    <!-- ======================================================= -->
+    <block wx:if="{{calcMode === 'pasture'}}">
+      <!-- 2. 羊群总存栏量 -->
+      <view class="form-group" style="margin-top: 28rpx;">
+        <view class="section-sub-header">
+          <text class="form-label" style="margin-bottom: 0;">🐑 羊群总存栏量 (只)</text>
+          <text class="form-hint" style="margin-top: 0;">用于全场日耗料量与采购核算</text>
+        </view>
+        <input 
+          class="form-input" 
+          type="number" 
+          placeholder="例如 500" 
+          value="{{totalFlockCount}}" 
+          bindinput="onTotalFlockInput"
+        />
       <!-- 快捷选择总存栏芯片 -->
       <view class="quick-chips">
         <text class="quick-chip-label">快捷设定：</text>
@@ -369,8 +391,128 @@
             </view>
           </view>
         </view>
-      </block>
     </view>
+    </block>
+
+    <!-- ======================================================= -->
+    <!-- 模式 B：单只个体精准模式 (经典单羊生理参数录入)            -->
+    <!-- ======================================================= -->
+    <block wx:else>
+      <!-- 2. 羊只生理阶段分段选择 -->
+      <view class="form-group" style="margin-top: 28rpx;">
+        <view class="section-sub-header">
+          <text class="form-label" style="margin-bottom: 0;">🐐 羊只生理阶段</text>
+          <text class="form-hint" style="margin-top: 0;">切换生理时期，核算个性化营养需要</text>
+        </view>
+        <view class="class-segmented-bar">
+          <view 
+            class="class-seg-item {{singleStage === 'lactating' ? 'active' : ''}}" 
+            bindtap="selectSingleStage" 
+            data-stage="lactating"
+          >
+            🥛 成年泌乳奶山羊
+          </view>
+          <view 
+            class="class-seg-item {{singleStage === 'maintenance' ? 'active' : ''}}" 
+            bindtap="selectSingleStage" 
+            data-stage="maintenance"
+          >
+            🌾 成年维持期羊
+          </view>
+          <view 
+            class="class-seg-item {{singleStage === 'growing' ? 'active' : ''}}" 
+            bindtap="selectSingleStage" 
+            data-stage="growing"
+          >
+            🌿 青年育成后备羊
+          </view>
+        </view>
+      </view>
+
+      <!-- 阶段特性说明卡片 -->
+      <view wx:if="{{singleStage === 'maintenance'}}" class="stage-notice-card" style="margin-top: 16rpx;">
+        <text class="stage-notice-icon">🌾</text>
+        <view class="stage-notice-text">
+          成年非泌乳维持期（空怀/干奶期）：重点维持机体基础代谢与瘤胃健康，日粮以优质粗饲料为主（粗料比例 ≥70%），无需产奶指标。
+        </view>
+      </view>
+      <view wx:elif="{{singleStage === 'growing'}}" class="stage-notice-card" style="margin-top: 16rpx;">
+        <text class="stage-notice-icon">🌿</text>
+        <view class="stage-notice-text">
+          青年育成阶段（3–12月龄）：重点保障骨骼发育与瘤胃容积扩张，粗饲料占干物质比重通常 ≥65%，强化钙磷与可吸收蛋白沉积。
+        </view>
+      </view>
+
+      <!-- 3. 单羊体重 -->
+      <view class="form-group" style="margin-top: 24rpx;">
+        <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx;">
+          <text class="form-label" style="margin-bottom: 0;">羊只体重 (kg)</text>
+          <text class="form-hint" style="margin-top: 0;">范围 25 – 90 kg</text>
+        </view>
+        <input 
+          class="form-input" 
+          type="digit" 
+          placeholder="例如 50" 
+          value="{{singleBodyWeightKg}}" 
+          bindinput="onSingleWeightInput"
+        />
+        <view class="quick-chips">
+          <text class="quick-chip-label">快捷填入：</text>
+          <view 
+            wx:for="{{singleStage === 'growing' ? ['25', '30', '35', '40', '45'] : ['45', '50', '55', '60', '70']}}" 
+            wx:key="*this" 
+            class="chip-item {{singleBodyWeightKg === item ? 'chip-active' : ''}}"
+            bindtap="quickSetSingleWeight"
+            data-val="{{item}}"
+          >
+            {{item}}kg
+          </view>
+        </view>
+      </view>
+
+      <!-- 4. 泌乳期专属字段 (日产奶量 + 目标乳脂率) -->
+      <block wx:if="{{singleStage === 'lactating'}}">
+        <view class="form-group" style="margin-top: 24rpx;">
+          <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx;">
+            <text class="form-label" style="margin-bottom: 0;">日产奶量 (kg/天)</text>
+            <text class="form-hint" style="margin-top: 0;">范围 0.2 – 5.0 kg/天</text>
+          </view>
+          <input 
+            class="form-input" 
+            type="digit" 
+            placeholder="例如 2.5" 
+            value="{{singleMilkKg}}" 
+            bindinput="onSingleMilkInput"
+          />
+          <view class="quick-chips">
+            <text class="quick-chip-label">快捷填入：</text>
+            <view 
+              wx:for="{{['1.5', '2.0', '2.5', '3.0', '3.5']}}" 
+              wx:key="*this" 
+              class="chip-item {{singleMilkKg === item ? 'chip-active' : ''}}"
+              bindtap="quickSetSingleMilk"
+              data-val="{{item}}"
+            >
+              {{item}}kg
+            </view>
+          </view>
+        </view>
+
+        <view class="form-group" style="margin-top: 24rpx;">
+          <view style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx;">
+            <text class="form-label" style="margin-bottom: 0;">目标乳脂率 (%, 可选)</text>
+            <text class="form-hint" style="margin-top: 0;">留空默认 4.0%</text>
+          </view>
+          <input 
+            class="form-input" 
+            type="digit" 
+            placeholder="留空默认 4.0%" 
+            value="{{singleMilkFatPercent}}" 
+            bindinput="onSingleFatInput"
+          />
+        </view>
+      </block>
+    </block>
 
     <!-- 错误提示 -->
     <view wx:if="{{errorMessage}}" class="alert-box alert-danger" style="margin-top: 20rpx;">

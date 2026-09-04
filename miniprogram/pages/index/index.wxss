@@ -338,3 +338,60 @@
   color: #34d399;
   font-weight: 700;
 }
+
+/* 顶部分段模式切换器 */
+.calc-mode-segmented-bar {
+  display: flex;
+  background: #f1f5f9;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 16rpx;
+  padding: 6rpx;
+  margin-top: 20rpx;
+  gap: 8rpx;
+}
+
+.calc-mode-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 10rpx;
+  font-size: 25rpx;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 12rpx;
+  transition: all 0.2s ease;
+}
+
+.calc-mode-item.active {
+  background: #ffffff;
+  color: #059669;
+  font-weight: 700;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+  border: 1rpx solid #a7f3d0;
+}
+
+/* 单羊生理阶段分段选择器 */
+.class-segmented-bar {
+  display: flex;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 14rpx;
+  padding: 6rpx;
+  gap: 8rpx;
+}
+
+.class-seg-item {
+  flex: 1;
+  text-align: center;
+  padding: 14rpx 6rpx;
+  font-size: 22rpx;
+  color: #64748b;
+  border-radius: 10rpx;
+  transition: all 0.2s ease;
+}
+
+.class-seg-item.active {
+  background: #059669;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 4rpx 10rpx rgba(5, 150, 105, 0.25);
+}

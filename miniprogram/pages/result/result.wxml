@@ -286,16 +286,21 @@
       <!-- 全场总用量汇总横幅 -->
       <view class="flock-summary-banner">
         <view class="flock-summary-title">
-          🐑 全场核心计算群（{{result.flock_totals.core_count}} 只 {{result.flock_totals.core_name || '成年泌乳羊'}}）每日原料总消耗：
+          <text wx:if="{{result.flock_totals.calc_mode === 'single'}}">🐐 单只精准测算（{{result.flock_totals.core_name}}）每日原料消耗与日粮成本：</text>
+          <text wx:else>🐑 全场核心计算群（{{result.flock_totals.core_count}} 只 {{result.flock_totals.core_name || '成年泌乳羊'}}）每日原料总消耗：</text>
         </view>
         <view class="flock-summary-numbers">
           <view class="flock-num-item">
-            <text class="flock-num-val">{{result.flock_totals.as_fed_daily_kg}}</text>
-            <text class="flock-num-unit">kg/天 (约 {{result.flock_totals.as_fed_daily_ton}} 吨)</text>
+            <text wx:if="{{result.flock_totals.calc_mode === 'single'}}" class="flock-num-val">{{result.totals.as_fed_kg}}</text>
+            <text wx:else class="flock-num-val">{{result.flock_totals.as_fed_daily_kg}}</text>
+            <text wx:if="{{result.flock_totals.calc_mode === 'single'}}" class="flock-num-unit">kg/只/天 (干物质 {{result.totals.dm_kg}} kg)</text>
+            <text wx:else class="flock-num-unit">kg/天 (约 {{result.flock_totals.as_fed_daily_ton}} 吨)</text>
           </view>
           <view class="flock-num-item" style="text-align: right;">
-            <text class="flock-num-val" style="color: #d97706;">¥{{result.flock_totals.cost_daily_rmb}}</text>
-            <text class="flock-num-unit">核心群日粮总成本</text>
+            <text wx:if="{{result.flock_totals.calc_mode === 'single'}}" class="flock-num-val" style="color: #d97706;">¥{{result.totals.cost_rmb}}</text>
+            <text wx:else class="flock-num-val" style="color: #d97706;">¥{{result.flock_totals.cost_daily_rmb}}</text>
+            <text wx:if="{{result.flock_totals.calc_mode === 'single'}}" class="flock-num-unit">单只羊日粮成本</text>
+            <text wx:else class="flock-num-unit">核心群日粮总成本</text>
           </view>
         </view>
       </view>
