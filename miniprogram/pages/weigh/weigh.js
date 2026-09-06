@@ -88,12 +88,21 @@ Page({
         const kg = parseFloat(row.as_fed_kg) || 0;
         const rawGrams = Math.round(kg * 1000);
         
-        // 按倍率等比缩小（保留 1 位小数，最小 0.5g）
-        const scaledGrams = Math.max(0.5, Number((rawGrams * ratio).toFixed(1)));
+        // 按倍率缩小（保留 1 位小数；仅在 rawGrams > 0 时保底最小可称量 0.5g，零用量保持为 0）
+        const scaledGrams = rawGrams > 0 
+          ? Math.max(0.5, Number((rawGrams * ratio).toFixed(1)))
+          : 0;
         
         let tol = 1.0;
         if (scaledGrams <= 5) tol = 0.5;
         else if (scaledGrams >= 30) tol = 2.0;
+
+        // 传感器量程校验 (0~50g) 与缩放畸变率计算
+        const isOverCapacity = scaledGrams > 50.0;
+        const theoretical = rawGrams * ratio;
+        const distortionRate = (rawGrams > 0 && theoretical > 0)
+          ? (Math.abs(scaledGrams - theoretical) / theoretical)
+          : 0;
 
         return {
           feed_id: row.feed_id || `feed_${idx}`,
@@ -102,6 +111,8 @@ Page({
           raw_g: rawGrams,
           target_g: scaledGrams,
           tolerance_g: tol,
+          is_over_capacity: isOverCapacity,
+          distortion_pct: (distortionRate * 100).toFixed(1),
           status: 'pending',
           weighed_g: null
         };

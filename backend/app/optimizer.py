@@ -396,13 +396,21 @@ def _solve_discrete(
     return amounts
 
 def _sync_salt(feeds: dict[str, FeedSpec], amounts: dict[str, float]) -> dict[str, float]:
-    """把食盐同步为当前总干物质的 0.5%（按 10 g 四舍五入）。"""
+    """把食盐同步为当前总干物质的 0.5%（自包含严格闭式解，按 10 g 四舍五入）。
+    
+    由 x_salt = 0.005 * (T_nonsalt + x_salt) 解得严格闭式解：
+    x_salt = (0.005 / (1 - 0.005)) * T_nonsalt
+    避免了旧实现中包含旧食盐值引起的一次迭代近似误差。
+    """
     if "salt" not in feeds or "salt" not in amounts:
         return dict(amounts)
-    total_dm = sum(_dm(amt, feeds[fid]) for fid, amt in amounts.items())
-    target = spec.SALT_FRACTION * total_dm / feeds["salt"].dm_fraction
+    nonsalt_dm = sum(_dm(amt, feeds[fid]) for fid, amt in amounts.items() if fid != "salt")
+    salt_fraction = spec.SALT_FRACTION
+    salt_target_dm = (salt_fraction / (1.0 - salt_fraction)) * nonsalt_dm
+    target_asfed = salt_target_dm / feeds["salt"].dm_fraction
     out = dict(amounts)
-    out["salt"] = round_half_up(target, 2)
+    rounded = round_half_up(target_asfed, 2)
+    out["salt"] = rounded
     return out
 
 
