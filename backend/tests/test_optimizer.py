@@ -145,6 +145,8 @@ def test_salt_is_fixed_05pct():
     assert salt_rows, "方案必须包含食盐"
     salt_dm = salt_rows[0]["dm_kg"]
     assert abs(salt_dm - 0.005 * result["totals"]["dm_kg"]) <= 0.005
+    salt_status = next(item for item in result["nutrient_status"] if item["key"] == "salt")
+    assert "取整误差容差 ±5 g" in salt_status["target"]
 
 
 def test_round_and_repair_deterministic():

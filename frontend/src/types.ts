@@ -211,3 +211,79 @@ export interface CalibrateResult {
   ai_unavailable: boolean;
   fallback_reason?: string | null;
 }
+
+// 牧场主产区
+export interface Region {
+  id: string;
+  name: string;
+  desc: string;
+  badge: string;
+}
+
+export const DEFAULT_REGIONS: Region[] = [
+  {
+    id: "guanzhong",
+    name: "陕西关中优势产区",
+    desc: "全国奶山羊全产业链核心基地（关中羊/莎能羊高产带）",
+    badge: "国家核心区",
+  },
+  {
+    id: "neimenggu",
+    name: "内蒙古奶业优势带",
+    desc: "草场与优质牧草资源带（羊草、苜蓿等粗饲料优势）",
+    badge: "牧草优质带",
+  },
+  {
+    id: "shandong",
+    name: "山东黄淮海产区",
+    desc: "集约化养殖与农副产物集散地（花生秧、玉米副产物优势）",
+    badge: "集约示范区",
+  },
+  {
+    id: "henan_hebei",
+    name: "河南/河北农区产区",
+    desc: "大宗农作物秸秆与全株青贮成本优势带",
+    badge: "大宗农区",
+  },
+];
+
+// 牧场羊群结构
+export interface HerdStructure {
+  lactatingPct: number;
+  lactatingCount: number;
+  growingPct: number;
+  growingCount: number;
+  lambPct: number;
+  lambCount: number;
+}
+
+// 牧场信息模型
+export interface PastureInfo {
+  calcMode: "pasture" | "single";
+  regionId: string;
+  regionName: string;
+  totalFlockCount: number;
+  herdStructure: HerdStructure;
+  coreTarget: "lactating" | "growing" | "lamb";
+  coreTargetName: string;
+  coreCount: number;
+}
+
+// 称重流水线原料项
+export interface WeighFeedItem {
+  feed_id: string;
+  name: string;
+  as_fed_kg: number;
+  raw_g: number;
+  target_g: number;
+  tolerance_g: number;
+  status: "pending" | "weighing" | "completed";
+  weighed_g?: number | null;
+}
+
+export interface ScaleOption {
+  key: string;
+  label: string;
+  ratio: number;
+}
+

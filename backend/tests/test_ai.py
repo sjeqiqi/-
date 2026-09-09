@@ -48,6 +48,8 @@ def test_valid_ai_response(monkeypatch):
     assert "短句" in system_prompt
     assert "专业词" in system_prompt and "括号" in system_prompt
     assert "约束条件" in system_prompt and "需要满足的营养要求" in system_prompt
+    assert "NRC" in system_prompt and "Sahlu" in system_prompt
+    assert "NY/T 816" not in system_prompt
 
 
 def test_code_fenced_json():

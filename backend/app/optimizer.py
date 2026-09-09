@@ -554,7 +554,7 @@ def build_nutrient_status(
          n["p_pct_dm"], "%DM", "p_min"),
         ("ca_p", "钙磷比", f"{req.ca_p_ratio_min:.1f}–{req.ca_p_ratio_max:.1f}",
          n["ca_p_ratio"], "", "ca_p_ratio"),
-        ("salt", "食盐", f"固定 {req.salt_fraction*100:.1f} %DM（取整容差 ±5 g）",
+        ("salt", "食盐", f"固定 {req.salt_fraction*100:.1f} %DM（取整误差容差 ±5 g）",
          n["salt_kg"], "kg/d", "salt"),
     ]
     out = []

@@ -59,7 +59,7 @@
       <view class="stage-divider {{currentThinkingStage >= 4 ? 'active' : ''}}"></view>
       <view class="stage-tag {{currentThinkingStage >= 4 ? 'active' : ''}}">
         <text class="stage-icon">{{currentThinkingStage >= 4 ? '✓' : '4'}}</text>
-        <text>全场收敛求解</text>
+        <text>10 g 收敛求解</text>
       </view>
     </view>
 
@@ -73,7 +73,7 @@
 
     <view class="terminal-footer">
       <view class="terminal-status-info">
-        <text class="terminal-hint">正在执行反刍营养学与线性规划单纯形法收敛计算…</text>
+        <text class="terminal-hint">正在执行反刍动物营养模型与运筹优化求解计算…</text>
       </view>
     </view>
   </view>
@@ -220,7 +220,7 @@
           <text wx:if="{{result.ration_insights.top_cp_sources && result.ration_insights.top_cp_sources.length > 0}}">
             • 核心蛋白源：{{result.ration_insights.top_cp_sources[0].name}} (贡献率 {{result.ration_insights.top_cp_sources[0].share_pct}}%)
           </text>
-          <text>• 成本控制亮点：在严格满足国家标准的前提下，达成全场最低成本配比</text>
+          <text>• 成本控制亮点：在满足营养约束的前提下，达成最低成本候选配比</text>
         </view>
       </view>
 
@@ -350,9 +350,9 @@
     <view class="card" style="padding: 24rpx;">
       <view class="card-title">
         <text>📊 营养达标复核明细表</text>
-        <text class="badge-green">国家行业标准复核</text>
+        <text class="badge-green">营养约束复核</text>
       </view>
-      <view class="card-subtitle">依照 NY/T 2835 及 NY/T 816，按 10g 整数化投喂量逐项复核</view>
+      <view class="card-subtitle">按 10 g 整数化投喂量逐项复算（文献体系 + 产品参数）</view>
 
       <scroll-view scroll-x class="table-scroll">
         <view class="table">
@@ -413,7 +413,7 @@
             </view>
           </view>
           <text class="form-hint" style="margin-top: 10rpx;">
-            贴边指标表示该营养素已合格达标但刚好压线，若实际原料批次发生变化建议复测。
+            贴边指标表示该营养素已合格达标但余量较窄（部分指标显示值已四舍五入），若实际原料批次发生变化建议复测。
           </text>
         </view>
 
@@ -421,7 +421,7 @@
         <view style="margin-top: 16rpx;">
           <text class="sub-section-title">优化算法机理</text>
           <text class="form-hint" style="line-height: 1.5; color: #64748b;">
-            系统严格按照《奶山羊饲养管理技术规范》（NY/T 2835-2015）及《肉羊营养需要量》（NY/T 816-2021），在全项营养约束边界内使用单纯形法求解全场规模化最低成本投喂组合。
+            系统在用户勾选的原料范围内，先以线性规划求最低成本候选，再按 10 g 原物质整数单位做整数规划求解，并用最终显示克数逐项复算营养达标情况；输出为每只羊每日投喂量。
           </text>
         </view>
       </view>
@@ -435,7 +435,7 @@
 
     <!-- 底部服务协议与免责声明入口 -->
     <view class="footer-agreement" bindtap="openAgreementModal">
-      <text class="agreement-text">📖 依据《奶山羊饲养管理技术规范》（NY/T 2835-2015）及营养标准计算</text>
+      <text class="agreement-text">📖 营养需要量依据 NRC《小反刍动物营养需要》（2007）等公开文献体系计算，饲养管理参照 NY/T 2835-2015，原料成分参考《中国饲料成分及营养价值表（2020）》</text>
       <text class="agreement-link">查看《用户服务协议与科学免责声明》</text>
     </view>
   </block>
@@ -451,14 +451,14 @@
         <view class="disclaimer-section">
           <text class="disclaimer-title">一、科学模型与计算依据</text>
           <text class="disclaimer-p">
-            本系统日粮配比模型严格依照农业行业标准《奶山羊饲养管理技术规范》（NY/T 2835-2015）、《肉羊营养需要量》（NY/T 816-2021）及《中国饲料成分及营养价值表》，结合运筹学线性规划进行最低成本优化求解。
+            本系统营养需要量依据美国 NRC《小反刍动物营养需要》（2007）及 Sahlu 等（2004）公开文献体系计算，并包含产品设计参数（代谢能与粗蛋白安全余量、干物质采食量 ±3% 带宽、10 g 取整）；饲养管理要求参照《奶山羊饲养管理技术规范》（NY/T 2835-2015）；原料成分参考《中国饲料成分及营养价值表（2020）》及公开附表；配方求解采用线性规划与 10 g 整数规划。本工具输出为参考方案，不替代专业营养师或兽医意见。
           </text>
         </view>
 
         <view class="disclaimer-section">
           <text class="disclaimer-title">二、原料数据与批次差异说明</text>
           <text class="disclaimer-p">
-            系统内置的原料营养成分为公开科研数据库的行业参考平均值。不同产地、不同批次原料的实际营养成分可能存在差异；如您具备原料检测化验报告，建议在“原料选择”页录入实测值以获得更精准的配方结果。
+            系统内置的原料营养成分参考《中国饲料成分及营养价值表（2020）》及全国畜牧总站公开附表（食盐为通用常识值）。不同产地、不同批次原料的实际营养成分可能存在差异；如您具备原料检测化验报告，建议在“原料选择”页录入实测值以获得更精准的配方结果。
           </text>
         </view>
 

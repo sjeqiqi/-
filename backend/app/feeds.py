@@ -9,7 +9,29 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-FEEDS_DIR = Path(__file__).resolve().parent / "feeds"
+import sys
+
+def _get_feeds_dir() -> Path:
+    candidates: list[Path] = []
+    if hasattr(sys, "_MEIPASS"):
+        base = Path(sys._MEIPASS)
+        candidates.extend([
+            base / "app" / "feeds",
+            base / "backend" / "app" / "feeds",
+            base / "feeds",
+        ])
+    app_dir = Path(__file__).resolve().parent
+    candidates.append(app_dir / "feeds")
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).resolve().parent
+        candidates.extend([exe_dir / "feeds", exe_dir / "app" / "feeds"])
+    for c in candidates:
+        if c.exists() and list(c.glob("*.json")):
+            return c
+    return app_dir / "feeds"
+
+FEEDS_DIR = _get_feeds_dir()
+
 
 
 @dataclass(frozen=True)

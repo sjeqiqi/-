@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+*.log
 
 # Node / 前端构建产物
 node_modules/
@@ -12,6 +13,16 @@ dist/
 # 环境变量与本地工具
 .env
 .vite/
+
+# 桌面打包与临时构建缓存
+build_dist/
+build_temp/
+desktop_app.log
+
+# Android 构建临时文件
+.gradle/
+**/build/
+local.properties
 
 # 智能体交接私密材料
 HANDOFF_*/PRIVATE_*

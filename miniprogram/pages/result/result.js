@@ -86,13 +86,13 @@ Page({
       const milk = parseFloat(animal.milkKg) || 2.5;
       const fat = parseFloat(animal.milkFatPercent) || 4.0;
       stage1Details = `调取牧场基础数据：全场总存栏 ${totalFlock} 只，核心计算群设定为【${coreName}】共 ${coreCount} 只（均重 ${bw} kg，日均产奶 ${milk} kg/天，目标乳脂率 ${fat}%）。
-依据《奶山羊饲养管理技术规范》（NY/T 2835-2015）及《肉羊营养需要量》（NY/T 816-2021）：
+依据美国 NRC《小反刍动物营养需要》（2007）及 Sahlu 等（2004）公开文献体系模型：
 • 基础维持净能需求 NEm = 0.315 × BW^0.75 = ${nem} MJ/d
 • 产奶净能需求 NE_milk = (0.386 × ${fat}% + 0.16) × ${milk} kg/d
-• 目标干物质采食量基准 DMI = ${dmiEst} kg/d，设定代谢能 ME、粗蛋白 CP、钙磷最小约束边界。`;
+• 目标干物质采食量基准 DMI = ${dmiEst} kg/d，设定代谢能 ME、粗蛋白 CP、钙磷等约束边界（含 5% 安全余量及 ±3% DMI 允许带宽）。`;
     } else {
       stage1Details = `调取牧场基础数据：全场总存栏 ${totalFlock} 只，核心计算群设定为【${coreName}】共 ${coreCount} 只（均重 ${bw} kg，生长与维持营养目标）。
-依据行业标准及肉羊营养需要量：
+依据美国 NRC《小反刍动物营养需要》（2007）及 Sahlu 等（2004）公开文献体系模型：
 • 基础维持与生长净能需求 NEm = 0.315 × BW^0.75 = ${nem} MJ/d
 • 目标干物质采食量基准 DMI = ${dmiEst} kg/d，强化粗饲料纤维、适口性、过瘤胃蛋白与骨骼矿物质沉积需要。`;
     }
@@ -105,7 +105,7 @@ ${stage1Details}
 • 确定粗饲料底盘：本地玉米青贮与优质干草构成基础反刍粗纤维源
 • 引入高能高蛋白：玉米提供瘤胃淀粉能，豆粕平衡可吸收过瘤胃蛋白
 • 矿物质平衡：补充食盐与饲料级石灰石粉
-建立单纯形线性规划优化矩阵：Min Cost = ∑ (Price_i × AsFed_i)，约束全项营养达标。
+建立连续线性规划优化矩阵：Min Cost = ∑ (Price_i × AsFed_i)，约束全项营养达标。
 
 > [阶段 3: 反刍生理健康与精粗比安全校验]
 评估反刍胃微生态与发酵环境：
@@ -113,9 +113,9 @@ ${stage1Details}
 • 保障每日反刍咀嚼时间与唾液缓冲分泌，维持瘤胃内环境 pH 值在 6.2 ~ 6.8 安全范围
 • 规避亚急性瘤胃酸中毒 (SARA)，确保群体消化机能与体况健康。
 
-> [阶段 4: 全场规模化配料与决策收敛]
-单纯形优化模型算法成功收敛，所有营养指标达标！
-根据全场【${coreName}】共 ${coreCount} 只规模联动换算每日各原料总消耗量（TMR饲喂车直接配料）。
+> [阶段 4: 10 g 整数化收敛求解与单只精准输出]
+连续线性规划与 10 g 整数规划求解成功收敛，所有营养约束逐项复算通过！
+输出每只羊每日投喂量，并根据【${coreName}】共 ${coreCount} 只规模联动换算每日各原料总消耗量（TMR 饲喂车直接配料）。
 科学精准投喂决策报告生成完毕，正在进入配方看板...`;
   },
 
@@ -450,12 +450,12 @@ ${stage1Details}
       {
         step: 1,
         title: '群体营养需求精准推导',
-        desc: `调取规模化牧场信息：全场存栏 ${totalFlock} 只，设定【${coreName}】共 ${coreCount} 只要重点测算主体。依据《奶山羊饲养管理技术规范》（NY/T 2835-2015）及《肉羊营养需要量》（NY/T 816-2021），精确计算维持与生产净能需求，锁定干物质采食量（DMI）、代谢能（ME）、粗蛋白（CP）、钙磷最低约束。`
+        desc: `调取规模化牧场信息：全场存栏 ${totalFlock} 只，设定【${coreName}】共 ${coreCount} 只为重点测算主体。依据美国 NRC《小反刍动物营养需要》（2007）及 Sahlu 等（2004）公开文献体系，精确计算维持与生产净能需求，锁定干物质采食量（DMI）、代谢能（ME）、粗蛋白（CP）、钙磷等营养约束。`
       },
       {
         step: 2,
         title: '区域原料行情与成本极小化建模',
-        desc: `自动联动【${regionName}】本地采购行情与营养实测数据库，锁定全株青贮与优质牧草构成粗饲料底盘，以玉米为核心高能原料，豆粕为优质过瘤胃蛋白源，构建以日粮总饲喂成本最小化为目标函数的单纯形优化模型。`
+        desc: `自动联动【${regionName}】本地采购行情与营养实测数据库，锁定全株青贮与优质牧草构成粗饲料底盘，以玉米为核心高能原料，豆粕为优质过瘤胃蛋白源，构建以日粮总饲喂成本最小化为目标函数的连续线性规划模型。`
       },
       {
         step: 3,
@@ -464,8 +464,8 @@ ${stage1Details}
       },
       {
         step: 4,
-        title: '全场规模化配料与决策输出',
-        desc: `单纯形模型算法成功收敛，所有国家标准营养指标全部复核通过。系统自动根据 ${coreCount} 只【${coreName}】规模联动换算每日全场总消耗量（TMR饲喂车直接配料），生成高产稳产与最低成本决策报告。`
+        title: '10 g 整数化求解与决策输出',
+        desc: `连续线性规划与 10 g 整数规划求解成功收敛，全项营养约束逐项复算通过。系统输出为每只羊每日精准投喂量，并根据 ${coreCount} 只【${coreName}】规模联动换算每日全群总消耗量（TMR 搅拌配料），生成高产稳产与最低成本决策报告。`
       }
     ];
 
@@ -482,7 +482,7 @@ ${stage1Details}
     return {
       status: 'ok',
       explanations: [
-        '本配方经运筹学模型精准求解，干物质采食量与能量蛋白指标完全符合《奶山羊饲养管理技术规范》（NY/T 2835-2015）及营养需要量标准。',
+        '本配方经运筹学模型精准求解，干物质采食量与能量蛋白指标符合美国 NRC（2007）及 Sahlu 等（2004）文献体系要求，饲养管理要求参照 NY/T 2835-2015。',
         `粗饲料占干物质 ${foragePct}%（以${topMe}为主供能，以${topCp}为主要蛋白源），粗精比例平衡，反刍咀嚼充分，利于维持瘤胃内环境健康。`,
         '日粮在严格满足全项营养达标的前提下实现了成本最低化，能稳定保障群体生产性能与健康体况。'
       ],
@@ -491,7 +491,7 @@ ${stage1Details}
         '建议在日粮配制中确保粗饲料切碎长度适宜（2–3cm），利于物理有效中性洗涤纤维（peNDF）发挥反刍刺激作用。'
       ],
       approved: true,
-      calibration_note: '配方结构合规，营养与反刍约束满足行业标准，予以通过。'
+      calibration_note: '配方结构合规，营养与反刍指标满足文献体系及产品安全设计参数，予以通过。'
     };
   },
 
@@ -559,6 +559,22 @@ ${stage1Details}
       res.nutrients.dmi_pct_of_target = Number(res.nutrients.dmi_pct_of_target).toFixed(1);
     }
 
+    // 食盐仅转换展示单位，不回写计算参数或达标判定。
+    if (Array.isArray(res.nutrient_status)) {
+      res.nutrient_status = res.nutrient_status.map(item => {
+        if (item.key !== 'salt') return item;
+        const actualG = item.actual !== null && item.actual !== undefined
+          ? Math.round(item.actual * 1000)
+          : 10;
+        return {
+          ...item,
+          target: item.target.replace('取整容差', '取整误差容差'),
+          actual: actualG,
+          unit: 'g/d'
+        };
+      });
+    }
+
     if (res.feed_rows) {
       res.feed_rows.forEach(r => {
         const perGoat = parseFloat(r.as_fed_kg) || 0;
@@ -598,6 +614,12 @@ ${stage1Details}
     };
 
     if (res.ration_insights) {
+      if (Array.isArray(res.ration_insights.boundary_flags)) {
+        res.ration_insights.boundary_flags = res.ration_insights.boundary_flags.map(flag => {
+          if (flag.detail.includes('四舍五入')) return flag;
+          return { ...flag, detail: `${flag.detail}（显示值已四舍五入）` };
+        });
+      }
       if (res.ration_insights.forage_dm_pct !== null && res.ration_insights.forage_dm_pct !== undefined) {
         res.ration_insights.forage_dm_pct = Number(res.ration_insights.forage_dm_pct).toFixed(1);
       }

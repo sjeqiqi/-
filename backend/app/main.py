@@ -159,9 +159,31 @@ def calibrate_stream(request: CalibrateRequest):
     )
 
 
-# ---- 可选：托管构建后的前端（本地单服务部署） ----
-_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
-if _dist.exists():
+# ---- 托管构建后的前端（本地单服务/桌面独立版部署） ----
+import sys
+
+def _find_dist_dir() -> Path | None:
+    candidates: list[Path] = []
+    if hasattr(sys, "_MEIPASS"):
+        base = Path(sys._MEIPASS)
+        candidates.extend([base / "frontend" / "dist", base / "dist"])
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).resolve().parent
+        candidates.extend([exe_dir / "frontend" / "dist", exe_dir / "dist"])
+    # 源码开发目录
+    app_file = Path(__file__).resolve()
+    candidates.append(app_file.parent.parent.parent / "frontend" / "dist")
+    candidates.append(app_file.parent.parent / "dist")
+    candidates.append(app_file.parent / "dist")
+
+    for c in candidates:
+        if c.exists() and (c / "index.html").exists():
+            return c
+    return None
+
+_dist = _find_dist_dir()
+if _dist and _dist.exists():
+    _logger.info("Serving frontend SPA from %s", _dist)
     app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
@@ -170,3 +192,4 @@ if _dist.exists():
         if full_path and candidate.is_file():
             return FileResponse(candidate)
         return FileResponse(_dist / "index.html")
+
