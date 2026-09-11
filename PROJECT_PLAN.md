@@ -149,9 +149,9 @@ DMI 是用于配方规划的预测量，不是保证实际采食量。最终配�
 - “默认成分估算”“仅覆盖宏量指标”“不含微量元素与维生素保证”等边界声明。
 - approximate 结果必须额外显示醒目警告：该结果不是合格配方、禁止直接按此饲喂、未达标项必须由营养师或兽医复核；不提供 AI 校准入口（AI 只解读合格配方）。
 
-## 6. DeepSeek V4 Flash 的职责
+## 6. DeepSeek AI 模型的职责
 
-后端使用官方 OpenAI 兼容接口和模型名 `deepseek-v4-flash`。API 密钥只能从服务器环境变量 `DEEPSEEK_API_KEY` 读取，禁止写入前端、源码、日志、测试夹具或版本库。
+后端使用官方 OpenAI 兼容接口，模型优先采用官方最新主力模型 `deepseek-flash`（并具备 `deepseek-v4-pro`、`deepseek-reasoner`、`deepseek-chat` 多级回退机制）。API 密钥从服务器环境变量 `DEEPSEEK_API_KEY` 读取（或前端备用直连通道）。
 
 AI 只接收计算后的结构化摘要，用 JSON 输出：
 

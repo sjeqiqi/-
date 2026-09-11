@@ -209,44 +209,47 @@ export async function calibrateRation(req: CalculateRequest): Promise<CalibrateR
     console.warn("云托管 API 调用未响应，尝试 DeepSeek 官方直连通道:", cloudErr);
   }
 
-  // 2. 尝试 DeepSeek 官方 API 直连通道 (使用系统自带密钥)
-  try {
-    const response = await fetch(DEEPSEEK_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${BUILTIN_DEEPSEEK_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: JSON.stringify(req) },
-        ],
-        max_tokens: 800,
-        temperature: 0.3,
-      }),
-    });
+  // 2. 尝试 DeepSeek 官方 API 直连通道 (优先使用官方新主力模型 deepseek-flash，故障时顺延回退)
+  const candidateModels = ["deepseek-flash", "deepseek-v4-pro", "deepseek-chat"];
+  for (const modelName of candidateModels) {
+    try {
+      const response = await fetch(DEEPSEEK_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${BUILTIN_DEEPSEEK_KEY}`,
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: JSON.stringify(req) },
+          ],
+          max_tokens: 800,
+          temperature: 0.3,
+        }),
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      const contentStr = data?.choices?.[0]?.message?.content || "";
-      // 提取 JSON
-      const jsonMatch = contentStr.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          status: "ok",
-          explanations: Array.isArray(parsed.explanations) ? parsed.explanations : FALLBACK_EXPLANATIONS,
-          risks: Array.isArray(parsed.risks) ? parsed.risks : FALLBACK_RISKS,
-          approved: typeof parsed.approved === "boolean" ? parsed.approved : true,
-          calibration_note: parsed.calibration_note || "DeepSeek 动物营养模型审核通过",
-          ai_unavailable: false,
-        };
+      if (response.ok) {
+        const data = await response.json();
+        const contentStr = data?.choices?.[0]?.message?.content || "";
+        // 提取 JSON
+        const jsonMatch = contentStr.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          return {
+            status: "ok",
+            explanations: Array.isArray(parsed.explanations) ? parsed.explanations : FALLBACK_EXPLANATIONS,
+            risks: Array.isArray(parsed.risks) ? parsed.risks : FALLBACK_RISKS,
+            approved: typeof parsed.approved === "boolean" ? parsed.approved : true,
+            calibration_note: parsed.calibration_note || "DeepSeek 动物营养模型审核通过",
+            ai_unavailable: false,
+          };
+        }
       }
+    } catch (deepseekErr) {
+      console.warn(`DeepSeek 官方直连通道 (${modelName}) 异常:`, deepseekErr);
     }
-  } catch (deepseekErr) {
-    console.warn("DeepSeek 官方直连受限或设备离线，启用本地科学建议:", deepseekErr);
   }
 
   // 3. 本地高可靠回退 (100% 稳定，基于 NY/T 2835 标准)

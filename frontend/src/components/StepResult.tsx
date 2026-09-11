@@ -209,7 +209,7 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal, onGoToW
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ fontSize: "16px", fontWeight: "bold", color: "#38bdf8" }}>
-                DeepSeek-Reasoner
+                DeepSeek-Flash
               </span>
               <span
                 style={{
@@ -303,7 +303,7 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal, onGoToW
               cursor: "pointer",
             }}
           >
-            <span>🧠 DeepSeek-Reasoner 深度思考推演链 ({thinkingDuration})</span>
+            <span>🧠 DeepSeek-Flash 深度思考推演链 ({thinkingDuration})</span>
             <span>{showThinkingDrawer ? "▲ 收起" : "▼ 展开查看"}</span>
           </button>
           {showThinkingDrawer && (
@@ -721,7 +721,7 @@ function ExplanationSections(props: {
         >
           <span style={{ fontSize: "18px" }}>✓</span>
           <div>
-            <strong>DeepSeek-Reasoner 营养师审核认证</strong>
+            <strong>DeepSeek-Flash 营养师审核认证</strong>
             <div style={{ fontSize: "11px", color: "#15803d", marginTop: "2px" }}>
               {props.calibration.calibration_note}
             </div>

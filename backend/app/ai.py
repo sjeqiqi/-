@@ -16,8 +16,8 @@ from typing import Any
 import httpx
 
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-# 默认使用 deepseek-reasoner (支持深度推理思考链输出)
-DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-reasoner")
+# 默认使用 deepseek-flash (官方新一代主力模型，支持极速推理与思考链输出)
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-flash")
 TIMEOUT_SECONDS = 45.0
 MAX_EXPLANATIONS = 4
 MAX_RISKS = 3
@@ -171,12 +171,11 @@ def calibrate_with_ai(
     own_client = client is None
     http: httpx.Client | None = client
     
-    # 候选模型列表：优先使用配置模型 (deepseek-reasoner)，若不可用则回退
+    # 候选模型列表：优先使用配置模型 (deepseek-flash)，若不可用则按序回退
     models_to_try = [DEEPSEEK_MODEL]
-    if "deepseek-reasoner" not in models_to_try:
-        models_to_try.append("deepseek-reasoner")
-    if "deepseek-chat" not in models_to_try:
-        models_to_try.append("deepseek-chat")
+    for fallback_model in ["deepseek-flash", "deepseek-v4-pro", "deepseek-reasoner", "deepseek-chat"]:
+        if fallback_model not in models_to_try:
+            models_to_try.append(fallback_model)
 
     last_error: Exception | None = None
 
@@ -264,10 +263,9 @@ def stream_calibrate_with_ai(
         return
 
     models_to_try = [DEEPSEEK_MODEL]
-    if "deepseek-reasoner" not in models_to_try:
-        models_to_try.append("deepseek-reasoner")
-    if "deepseek-chat" not in models_to_try:
-        models_to_try.append("deepseek-chat")
+    for fallback_model in ["deepseek-flash", "deepseek-v4-pro", "deepseek-reasoner", "deepseek-chat"]:
+        if fallback_model not in models_to_try:
+            models_to_try.append(fallback_model)
 
     for model_name in models_to_try:
         req_json = {

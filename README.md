@@ -110,4 +110,4 @@ npm test
 ## 已知说明
 
 - 后端默认端口 8000、前端开发端口 5173；端口占用时请调整。
-- AI 模型名 `deepseek-v4-flash`，走官方 OpenAI 兼容接口（base URL `https://api.deepseek.com`），超时 30 秒。
+- AI 模型优先使用官方最新主力模型 `deepseek-flash`（支持深度推理与思维链输出，具备 `deepseek-v4-pro`、`deepseek-reasoner`、`deepseek-chat` 多级回退机制），走官方 OpenAI 兼容接口（base URL `https://api.deepseek.com`），超时 45 秒。

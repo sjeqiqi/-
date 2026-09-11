@@ -28,7 +28,7 @@
           <view class="terminal-dot dot-green"></view>
         </view>
         <view class="terminal-title-wrap">
-          <text class="terminal-title">DeepSeek-Reasoner</text>
+          <text class="terminal-title">DeepSeek-Flash</text>
           <text class="terminal-badge-thinking">
             <text class="pulse-thinking-circle"></text>
             深度思考中 ({{thinkingDuration}})
