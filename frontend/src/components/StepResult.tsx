@@ -125,14 +125,34 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
         if (cancelled) return;
         if (res.status === "feasible") {
           setLoaded({ kind: "feasible", data: res });
-          // 自动启动 AI 校准
-          calibrateRation(request)
+          // 自动启动 AI 校准，并在推演期间同步完成，携带已计算好的完整配方与营养事实
+          setCalibrating(true);
+          calibrateRation(request, res)
             .then((c) => {
-              if (!cancelled) setCalibration(c);
+              if (!cancelled) {
+                setCalibration(c);
+                setCalibrating(false);
+              }
             })
-            .catch(() => {});
+            .catch((err) => {
+              if (!cancelled) {
+                console.warn("AI 解读自动生成异常:", err);
+                setCalibrating(false);
+              }
+            });
         } else if (res.status === "approximate") {
           setLoaded({ kind: "approximate", data: res });
+          setCalibrating(true);
+          calibrateRation(request, res)
+            .then((c) => {
+              if (!cancelled) {
+                setCalibration(c);
+                setCalibrating(false);
+              }
+            })
+            .catch(() => {
+              if (!cancelled) setCalibrating(false);
+            });
         } else {
           setLoaded({ kind: "infeasible", data: res });
         }
@@ -161,7 +181,8 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
     setCalibrateError(null);
     setCalibration(null);
     try {
-      const res = await calibrateRation(request);
+      const activeRes = loaded.kind === "feasible" || loaded.kind === "approximate" ? loaded.data : undefined;
+      const res = await calibrateRation(request, activeRes);
       setCalibration(res);
     } catch (err) {
       setCalibrateError((err as Error).message);
@@ -723,7 +744,6 @@ function ExplanationSections(props: {
       : (METRIC_LABELS[flag.metric] ?? flag.label),
   )));
   const fixedRisks = Array.from(new Set([insights.scope_notice, ...props.risks]));
-  const aiAvailable = props.calibration && !props.calibration.ai_unavailable;
 
   return (
     <section className="explanation" aria-label="配方解读">
@@ -771,8 +791,26 @@ function ExplanationSections(props: {
         </div>
       )}
 
-      {/* 智能通俗饲喂指导（与小程序 AI 决策解读卡片 1:1 对齐） */}
-      {aiAvailable && props.calibration!.explanations.length > 0 && (
+      {/* 智能通俗饲喂指导（自动生成，若在生成中则展示进度，完成后立即呈现） */}
+      {props.calibrating && (
+        <div
+          style={{
+            background: "#f5f3ff",
+            border: "1px dashed #c7d2fe",
+            borderRadius: "10px",
+            padding: "14px 18px",
+            textAlign: "center",
+            marginBottom: "16px",
+          }}
+        >
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "#4338ca", fontSize: "13px", fontWeight: "600" }}>
+            <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>🔄</span>
+            <span>DeepSeek-Flash 正在实时生成专家智能解读与通俗饲喂指导…</span>
+          </div>
+        </div>
+      )}
+
+      {!props.calibrating && props.calibration && props.calibration.explanations && props.calibration.explanations.length > 0 && (
         <div
           style={{
             background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
@@ -788,12 +826,21 @@ function ExplanationSections(props: {
               <span>💡</span>
               <span>智能通俗饲喂指导</span>
             </span>
-            <span style={{ fontSize: "11px", background: "#e0e7ff", color: "#4338ca", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
-              DeepSeek AI
+            <span
+              style={{
+                fontSize: "11px",
+                background: props.calibration.ai_unavailable ? "#fef3c7" : "#e0e7ff",
+                color: props.calibration.ai_unavailable ? "#b45309" : "#4338ca",
+                padding: "2px 8px",
+                borderRadius: "10px",
+                fontWeight: "600",
+              }}
+            >
+              {props.calibration.ai_unavailable ? "行业标准复核" : "DeepSeek-Flash"}
             </span>
           </div>
           <ul style={{ margin: 0, paddingLeft: "18px", color: "#3730a3", fontSize: "13px", lineHeight: "1.7" }}>
-            {props.calibration!.explanations.map((item) => (
+            {props.calibration.explanations.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
@@ -845,10 +892,10 @@ function ExplanationSections(props: {
               ? `${boundaryLabels.join("、")}；${props.qualified ? "以上项目当前均仍为达标状态。" : "这些提醒仅说明已达标项目的剩余空间。"}`
               : "当前没有已达标指标贴近约束边界。"}
           </p>
-          {aiAvailable && props.calibration!.explanations.length > 0 && (
+          {props.calibration && props.calibration.explanations && props.calibration.explanations.length > 0 && (
             <div className="ai-paraphrase">
               <strong>AI 通俗补充（不改变上述计算事实）</strong>
-              <ul>{props.calibration!.explanations.map((item) => <li key={item}>{item}</li>)}</ul>
+              <ul>{props.calibration.explanations.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
           )}
         </article>
@@ -866,10 +913,10 @@ function ExplanationSections(props: {
               <li><strong>本次结果特别提醒：</strong>{boundaryLabels.join("、")}接近相应约束边界。</li>
             )}
           </ul>
-          {aiAvailable && props.calibration!.risks.length > 0 && (
+          {props.calibration && props.calibration.risks && props.calibration.risks.length > 0 && (
             <div className="ai-paraphrase">
               <strong>AI 通俗补充（不新增科学结论）</strong>
-              <ul>{props.calibration!.risks.map((risk) => <li key={risk}>{risk}</li>)}</ul>
+              <ul>{props.calibration.risks.map((risk) => <li key={risk}>{risk}</li>)}</ul>
             </div>
           )}
         </article>

@@ -185,7 +185,10 @@ ${stage1Details}
  * 2. 次选直连 DeepSeek 官方大模型 API (带原系统自带密钥)；
  * 3. 断网或异常时无缝回退至本地国家行业标准专业建议。
  */
-export async function calibrateRation(req: CalculateRequest): Promise<CalibrateResult> {
+export async function calibrateRation(
+  req: CalculateRequest,
+  rationResult?: RationResult,
+): Promise<CalibrateResult> {
   // 单元测试环境直接走测试 mock
   if (Boolean((import.meta as any).env?.MODE === "test")) {
     return request<CalibrateResult>("/api/rations/calibrate", {
@@ -195,22 +198,42 @@ export async function calibrateRation(req: CalculateRequest): Promise<CalibrateR
     });
   }
 
-  // 1. 尝试远程云托管服务
-  try {
-    const res = await request<CalibrateResult>("/api/rations/calibrate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req),
-    });
-    if (res && res.status === "ok") {
-      return res;
-    }
-  } catch (cloudErr) {
-    console.warn("云托管 API 调用未响应，尝试 DeepSeek 官方直连通道:", cloudErr);
+  // 1. 构造发给大模型的完整事实上下文（输入参数 + 运筹求解出的真实配方与营养指标）
+  const userContent: Record<string, any> = {
+    animal: req.animal,
+  };
+
+  if (rationResult && (rationResult.status === "feasible" || rationResult.status === "approximate")) {
+    userContent.calculated_ration = {
+      status: rationResult.status,
+      totals: rationResult.totals,
+      dmi_target_kg: rationResult.dmi_target_kg,
+      feeds_used: rationResult.feed_rows?.filter((r) => r.as_fed_kg > 0).map((r) => ({
+        name: r.name,
+        as_fed_kg: r.as_fed_kg,
+        price_rmb_per_kg: r.price_rmb_per_kg,
+        cost_rmb: r.cost_rmb,
+      })),
+      nutrients: {
+        total_dm_kg: rationResult.nutrients?.total_dm_kg,
+        cp_pct_dm: rationResult.nutrients?.cp_pct_dm,
+        me_mj: rationResult.nutrients?.me_mj,
+        forage_pct_dm: rationResult.nutrients?.forage_pct_dm,
+        salt_kg: rationResult.nutrients?.salt_kg,
+      },
+      insights: {
+        used_feed_count: rationResult.ration_insights?.used_feed_count,
+        forage_dm_pct: rationResult.ration_insights?.forage_dm_pct,
+        top_me_sources: rationResult.ration_insights?.top_me_sources,
+        top_cp_sources: rationResult.ration_insights?.top_cp_sources,
+      },
+    };
+  } else {
+    userContent.feeds_input = req.feeds;
   }
 
-  // 2. 尝试 DeepSeek 官方 API 直连通道 (优先使用官方新主力模型 deepseek-flash，故障时顺延回退)
-  const candidateModels = ["deepseek-flash", "deepseek-v4-pro", "deepseek-chat"];
+  // 2. 优先通过 DeepSeek 官方 API 直连通道极速生成（自带官方 Key，max_tokens 设为 2500 保证推理链与输出完整）
+  const candidateModels = ["deepseek-flash", "deepseek-chat"];
   for (const modelName of candidateModels) {
     try {
       const response = await fetch(DEEPSEEK_API_URL, {
@@ -223,9 +246,9 @@ export async function calibrateRation(req: CalculateRequest): Promise<CalibrateR
           model: modelName,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: JSON.stringify(req) },
+            { role: "user", content: JSON.stringify(userContent) },
           ],
-          max_tokens: 800,
+          max_tokens: 2500,
           temperature: 0.3,
         }),
       });
@@ -239,8 +262,12 @@ export async function calibrateRation(req: CalculateRequest): Promise<CalibrateR
           const parsed = JSON.parse(jsonMatch[0]);
           return {
             status: "ok",
-            explanations: Array.isArray(parsed.explanations) ? parsed.explanations : FALLBACK_EXPLANATIONS,
-            risks: Array.isArray(parsed.risks) ? parsed.risks : FALLBACK_RISKS,
+            explanations: Array.isArray(parsed.explanations) && parsed.explanations.length > 0
+              ? parsed.explanations
+              : FALLBACK_EXPLANATIONS,
+            risks: Array.isArray(parsed.risks) && parsed.risks.length > 0
+              ? parsed.risks
+              : FALLBACK_RISKS,
             approved: typeof parsed.approved === "boolean" ? parsed.approved : true,
             calibration_note: parsed.calibration_note || "DeepSeek 动物营养模型审核通过",
             ai_unavailable: false,
@@ -252,7 +279,21 @@ export async function calibrateRation(req: CalculateRequest): Promise<CalibrateR
     }
   }
 
-  // 3. 本地高可靠回退 (100% 稳定，基于 NY/T 2835 标准)
+  // 3. 次选远程后端通道（若有自建 API 代理）
+  try {
+    const res = await request<CalibrateResult>("/api/rations/calibrate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    if (res && res.status === "ok") {
+      return res;
+    }
+  } catch (cloudErr) {
+    console.warn("远程 API 代理未响应:", cloudErr);
+  }
+
+  // 4. 本地高可靠回退（100% 稳定，基于 NY/T 2835 标准与 NRC 模型）
   return {
     status: "ok",
     explanations: FALLBACK_EXPLANATIONS,
@@ -260,7 +301,7 @@ export async function calibrateRation(req: CalculateRequest): Promise<CalibrateR
     approved: true,
     calibration_note: FALLBACK_NOTE,
     ai_unavailable: true,
-    fallback_reason: "网络离线，已启用本地科学标准规范解读",
+    fallback_reason: "网络离线，已启用国家行业标准专业饲喂指导",
   };
 }
 
