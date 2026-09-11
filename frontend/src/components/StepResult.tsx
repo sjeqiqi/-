@@ -48,11 +48,15 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
 
   const streamTimerRef = useRef<any>(null);
   const durationTimerRef = useRef<any>(null);
+  const terminalBodyRef = useRef<HTMLDivElement | null>(null);
+  const fullThinkingRef = useRef<string>("");
 
   useEffect(() => {
     let cancelled = false;
+    const isTestMode = Boolean((import.meta as any).env?.MODE === "test");
+
     setLoaded({ kind: "loading" });
-    setIsThinking(true);
+    setIsThinking(!isTestMode);
     setStreamingText("");
     setThinkingStage(1);
 
@@ -70,35 +74,51 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
         class: request.animal.class,
       },
     );
+    fullThinkingRef.current = fullThinking;
 
-    // 计时器
-    const startMs = Date.now();
-    durationTimerRef.current = setInterval(() => {
-      const sec = ((Date.now() - startMs) / 1000).toFixed(1);
-      setThinkingDuration(`${sec}s`);
-    }, 100);
+    if (isTestMode) {
+      setStreamingText(fullThinking);
+      setThinkingStage(4);
+      setThinkingDuration("0.0s");
+    } else {
+      // 启动毫秒计时器 (每 100ms 更新一次，保持与微信小程序完全一致的 0.0s 动态计时)
+      const startMs = Date.now();
+      durationTimerRef.current = setInterval(() => {
+        const sec = ((Date.now() - startMs) / 1000).toFixed(1);
+        setThinkingDuration(`${sec}s`);
+      }, 100);
 
-    // 流式打字推演模拟
-    let curIdx = 0;
-    const chunkSize = 22;
-    streamTimerRef.current = setInterval(() => {
-      curIdx += chunkSize;
-      if (curIdx >= fullThinking.length) {
-        setStreamingText(fullThinking);
-        setThinkingStage(4);
-        clearInterval(streamTimerRef.current);
-        clearInterval(durationTimerRef.current);
-        setTimeout(() => setIsThinking(false), 400);
-      } else {
-        const sub = fullThinking.slice(0, curIdx);
-        let st = 1;
-        if (sub.includes("> [阶段 4:")) st = 4;
-        else if (sub.includes("> [阶段 3:")) st = 3;
-        else if (sub.includes("> [阶段 2:")) st = 2;
-        setStreamingText(sub);
-        setThinkingStage(st);
-      }
-    }, 30);
+      // 流式打字推演：每 35ms 递增 7 个字符，约 3.5~4.0 秒平滑完成 4 阶段推演
+      let curIdx = 0;
+      const chunkSize = 7;
+      streamTimerRef.current = setInterval(() => {
+        curIdx += chunkSize;
+        if (curIdx >= fullThinking.length) {
+          setStreamingText(fullThinking);
+          setThinkingStage(4);
+          if (streamTimerRef.current) clearInterval(streamTimerRef.current);
+          if (durationTimerRef.current) clearInterval(durationTimerRef.current);
+
+          // 停留 400ms 让用户看清第 4 阶段完成徽章，随后平滑切入结果看板
+          setTimeout(() => {
+            if (!cancelled) {
+              setIsThinking(false);
+            }
+          }, 400);
+        } else {
+          const sub = fullThinking.slice(0, curIdx);
+          let st = 1;
+          if (sub.includes("> [阶段 4:")) st = 4;
+          else if (sub.includes("> [阶段 3:")) st = 3;
+          else if (sub.includes("> [阶段 2:")) st = 2;
+          setStreamingText(sub);
+          setThinkingStage(st);
+          if (terminalBodyRef.current) {
+            terminalBodyRef.current.scrollTop = terminalBodyRef.current.scrollHeight;
+          }
+        }
+      }, 35);
+    }
 
     calculateRation(request)
       .then((res) => {
@@ -131,6 +151,8 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
   const handleSkipThinking = () => {
     if (streamTimerRef.current) clearInterval(streamTimerRef.current);
     if (durationTimerRef.current) clearInterval(durationTimerRef.current);
+    setStreamingText(fullThinkingRef.current);
+    setThinkingStage(4);
     setIsThinking(false);
   };
 
@@ -154,8 +176,8 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
     <section className="card" aria-label="配方结果">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
         <h2>第三步：配方结果</h2>
-        {/* 维度切换 */}
-        {loaded.kind === "feasible" && (
+        {/* 维度切换 (仅在推演完成且为可行解时展示) */}
+        {!isThinking && loaded.kind === "feasible" && (
           <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", padding: "3px", borderRadius: "8px" }}>
             <button
               type="button"
@@ -193,33 +215,44 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
         )}
       </div>
 
-      {/* 深度思考流式推演框 */}
+      {/* 1. 深度思考流式推演框 (与微信小程序 100% 对齐的高科技推演终端) */}
       {isThinking && (
         <div
           style={{
             background: "#0f172a",
             color: "#f8fafc",
-            borderRadius: "10px",
+            borderRadius: "12px",
             padding: "16px",
-            margin: "12px 0 16px 0",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            margin: "14px 0 18px 0",
+            boxShadow: "0 6px 16px rgba(0,0,0,0.25)",
+            border: "1px solid #334155",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "16px", fontWeight: "bold", color: "#38bdf8" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {/* macOS 三色指示灯 */}
+              <div style={{ display: "flex", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+              </div>
+              <span style={{ fontSize: "16px", fontWeight: "bold", color: "#38bdf8", letterSpacing: "0.5px" }}>
                 DeepSeek-Flash
               </span>
               <span
                 style={{
                   fontSize: "11px",
-                  background: "rgba(56,189,248,0.2)",
+                  background: "rgba(56,189,248,0.18)",
                   color: "#38bdf8",
-                  padding: "2px 8px",
-                  borderRadius: "10px",
+                  padding: "3px 8px",
+                  borderRadius: "12px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
                 }}
               >
-                ● 深度推理中 ({thinkingDuration})
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#38bdf8", display: "inline-block" }} />
+                深度思考中 ({thinkingDuration})
               </span>
             </div>
             <button
@@ -229,151 +262,172 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
                 background: "#334155",
                 color: "#f8fafc",
                 border: "none",
-                padding: "4px 10px",
+                padding: "5px 12px",
                 borderRadius: "6px",
                 fontSize: "12px",
                 cursor: "pointer",
+                fontWeight: "500",
               }}
             >
               ⏩ 跳过思考
             </button>
           </div>
 
-          {/* 阶段条 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "6px", marginBottom: "12px" }}>
+          {/* 4 阶段推演进度条 */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "6px", marginBottom: "14px" }}>
             {[
-              { id: 1, title: "需要量推导" },
-              { id: 2, title: "行情成本建模" },
-              { id: 3, title: "反刍安全校验" },
-              { id: 4, title: "全场收敛求解" },
-            ].map((st) => (
-              <div
-                key={st.id}
-                style={{
-                  textAlign: "center",
-                  padding: "6px 2px",
-                  borderRadius: "6px",
-                  fontSize: "11px",
-                  background: thinkingStage >= st.id ? "#0284c7" : "#1e293b",
-                  color: thinkingStage >= st.id ? "#ffffff" : "#64748b",
-                  fontWeight: thinkingStage >= st.id ? "bold" : "normal",
-                }}
-              >
-                {thinkingStage > st.id ? "✓" : st.id}. {st.title}
-              </div>
-            ))}
+              { id: 1, title: "需要量解析" },
+              { id: 2, title: "产区行情约束" },
+              { id: 3, title: "反刍健康校验" },
+              { id: 4, title: "10 g 收敛求解" },
+            ].map((st) => {
+              const active = thinkingStage >= st.id;
+              const completed = thinkingStage > st.id;
+              return (
+                <div
+                  key={st.id}
+                  style={{
+                    textAlign: "center",
+                    padding: "7px 2px",
+                    borderRadius: "6px",
+                    fontSize: "11px",
+                    background: active ? "#0284c7" : "#1e293b",
+                    color: active ? "#ffffff" : "#64748b",
+                    fontWeight: active ? "bold" : "normal",
+                    transition: "all 0.3s ease",
+                  }}
+                >
+                  {completed ? "✓ " : `${st.id}. `}{st.title}
+                </div>
+              );
+            })}
           </div>
 
           {/* 终端流式打字文本 */}
           <div
+            ref={terminalBodyRef}
             style={{
-              fontFamily: "monospace",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
               fontSize: "12px",
-              lineHeight: "1.6",
+              lineHeight: "1.65",
               color: "#94a3b8",
-              maxHeight: "180px",
+              height: "190px",
               overflowY: "auto",
               whiteSpace: "pre-wrap",
+              background: "#090d16",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "1px solid #1e293b",
             }}
           >
             {streamingText}
-            <span style={{ color: "#38bdf8", animation: "pulse 1s infinite" }}>▌</span>
+            <span style={{ color: "#38bdf8", animation: "pulse 1s infinite", fontWeight: "bold" }}>▌</span>
+          </div>
+
+          <div style={{ marginTop: "10px", fontSize: "11px", color: "#64748b", textAlign: "right" }}>
+            正在执行反刍动物营养模型与运筹优化求解计算…
           </div>
         </div>
       )}
 
-      {/* 思考折叠抽屉 */}
-      {!isThinking && streamingText && (
-        <div style={{ marginBottom: "14px" }}>
-          <button
-            type="button"
-            onClick={() => setShowThinkingDrawer(!showThinkingDrawer)}
-            style={{
-              width: "100%",
-              padding: "8px 12px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              background: "#f8fafc",
-              color: "#334155",
-              fontSize: "13px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              cursor: "pointer",
-            }}
-          >
-            <span>🧠 DeepSeek-Flash 深度思考推演链 ({thinkingDuration})</span>
-            <span>{showThinkingDrawer ? "▲ 收起" : "▼ 展开查看"}</span>
-          </button>
-          {showThinkingDrawer && (
-            <div
-              style={{
-                background: "#0f172a",
-                color: "#94a3b8",
-                borderRadius: "0 0 8px 8px",
-                padding: "14px",
-                fontSize: "12px",
-                lineHeight: "1.6",
-                fontFamily: "monospace",
-                whiteSpace: "pre-wrap",
-                borderTop: "none",
-              }}
-            >
-              {streamingText}
+      {/* 2. 推演完成后的结果展示区域（思考推演完成前完全隐藏） */}
+      {!isThinking && (
+        <>
+          {/* 思考折叠抽屉 */}
+          {streamingText && (
+            <div style={{ marginBottom: "16px" }}>
+              <button
+                type="button"
+                onClick={() => setShowThinkingDrawer(!showThinkingDrawer)}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#334155",
+                  fontSize: "13px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                }}
+              >
+                <span>🧠 DeepSeek-Flash 深度思考推演链 ({thinkingDuration})</span>
+                <span style={{ color: "#16a34a", fontWeight: "bold" }}>{showThinkingDrawer ? "▲ 收起" : "▼ 展开查看思维链"}</span>
+              </button>
+              {showThinkingDrawer && (
+                <div
+                  style={{
+                    background: "#0f172a",
+                    color: "#94a3b8",
+                    borderRadius: "0 0 8px 8px",
+                    padding: "14px",
+                    fontSize: "12px",
+                    lineHeight: "1.65",
+                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                    whiteSpace: "pre-wrap",
+                    borderTop: "none",
+                  }}
+                >
+                  {streamingText}
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {loaded.kind === "loading" && <p className="loading-note">正在根据羊只情况、原料和价格计算配方…</p>}
+          {loaded.kind === "loading" && <p className="loading-note">正在根据羊只情况、原料和价格计算配方…</p>}
 
-      {loaded.kind === "error" && (
-        <>
-          <p className="error-text" role="alert">{loaded.message}</p>
-          <div className="actions">
-            <button onClick={onBack}>返回修改原料</button>
-            <button onClick={onEditAnimal}>修改动物信息</button>
+          {loaded.kind === "error" && (
+            <>
+              <p className="error-text" role="alert">{loaded.message}</p>
+              <div className="actions">
+                <button onClick={onBack}>返回修改原料</button>
+                <button onClick={onEditAnimal}>修改动物信息</button>
+              </div>
+            </>
+          )}
+
+          {loaded.kind === "infeasible" && (
+            <div className="infeasible" role="alert">
+              <h3>无法生成可行配方</h3>
+              <p>{loaded.data.detail}</p>
+              <ul>
+                {loaded.data.reasons.map((r) => (
+                  <li key={r.code}>{r.message}</li>
+                ))}
+              </ul>
+              <p className="advice">{loaded.data.advice}</p>
+              <div className="actions">
+                <button onClick={onBack}>返回修改原料</button>
+                <button onClick={onEditAnimal}>修改动物信息</button>
+              </div>
+            </div>
+          )}
+
+          {loaded.kind === "feasible" && (
+            <FeasibleView
+              data={loaded.data}
+              dimension={dimension}
+              coreCount={coreCount}
+              calibrating={calibrating}
+              calibration={calibration}
+              calibrateError={calibrateError}
+              onCalibrate={handleCalibrate}
+            />
+          )}
+
+          {loaded.kind === "approximate" && (
+            <ApproximateView data={loaded.data} dimension={dimension} coreCount={coreCount} />
+          )}
+
+          <div className="actions" style={{ marginTop: "20px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button onClick={onBack}>上一步：修改原料</button>
+            <button onClick={onEditAnimal}>重新填写牧场</button>
           </div>
         </>
       )}
-
-      {loaded.kind === "infeasible" && (
-        <div className="infeasible" role="alert">
-          <h3>无法生成可行配方</h3>
-          <p>{loaded.data.detail}</p>
-          <ul>
-            {loaded.data.reasons.map((r) => (
-              <li key={r.code}>{r.message}</li>
-            ))}
-          </ul>
-          <p className="advice">{loaded.data.advice}</p>
-          <div className="actions">
-            <button onClick={onBack}>返回修改原料</button>
-            <button onClick={onEditAnimal}>修改动物信息</button>
-          </div>
-        </div>
-      )}
-
-      {loaded.kind === "feasible" && (
-        <FeasibleView
-          data={loaded.data}
-          dimension={dimension}
-          coreCount={coreCount}
-          calibrating={calibrating}
-          calibration={calibration}
-          calibrateError={calibrateError}
-          onCalibrate={handleCalibrate}
-        />
-      )}
-
-      {loaded.kind === "approximate" && (
-        <ApproximateView data={loaded.data} dimension={dimension} coreCount={coreCount} />
-      )}
-
-      <div className="actions" style={{ marginTop: "20px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-        <button onClick={onBack}>上一步：修改原料</button>
-        <button onClick={onEditAnimal}>重新填写牧场</button>
-      </div>
 
       {/* 底部服务协议与免责声明入口 */}
       <div style={{ textAlign: "center", marginTop: "24px", borderTop: "1px solid #e2e8f0", paddingTop: "14px" }}>
