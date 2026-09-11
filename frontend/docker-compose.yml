@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  goat-ration-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: goat-ration-web
+    restart: always
+    ports:
+      - "8080:80"
