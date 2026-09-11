@@ -1,11 +1,43 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AnimalInput, CalculateRequest, FeedInput } from "./types";
 import { StepAnimal, type AnimalForm, type PastureForm } from "./components/StepAnimal";
 import { StepFeeds, type FeedForm, type FeedsMode } from "./components/StepFeeds";
 import { StepResult } from "./components/StepResult";
 
+export function isAndroidAppEnv(): boolean {
+  if (typeof window === "undefined") return false;
+  const loc = window.location;
+  if (
+    (window as any).isAndroidApp === true ||
+    Boolean((window as any).AndroidNative) ||
+    loc.hostname === "appassets.androidplatform.net" ||
+    loc.protocol === "file:" ||
+    /DairyGoatApp/i.test(navigator.userAgent) ||
+    loc.search.includes("app=1") ||
+    loc.search.includes("isApp=true")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export default function App() {
   const [step, setStep] = useState(1);
+  const [isApp, setIsApp] = useState<boolean>(() => isAndroidAppEnv());
+
+  useEffect(() => {
+    if (!isApp) {
+      const check = () => {
+        if (isAndroidAppEnv()) {
+          setIsApp(true);
+        }
+      };
+      check();
+      const timer = setTimeout(check, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isApp]);
+
   const [animal, setAnimal] = useState<AnimalForm>({
     class: "lactating",
     bodyWeightKg: "50",
@@ -52,11 +84,11 @@ export default function App() {
         animal.milkFatPercent.trim() === "" ? null : Number(animal.milkFatPercent);
     }
     const feedInputs: FeedInput[] = forms.map((f) => {
-      const raw = (f.override ?? {}) as Record<string, string | null | undefined>;
+      const rawOverride = f.override ?? {};
       const override: Record<string, number> = {};
-      for (const [key, value] of Object.entries(raw)) {
-        if (value !== null && value !== undefined && value !== "") {
-          override[key] = Number(value);
+      for (const [k, v] of Object.entries(rawOverride)) {
+        if (v !== undefined && v !== null && v !== "") {
+          override[k] = Number(v);
         }
       }
       return {
@@ -71,20 +103,22 @@ export default function App() {
   }, [animal]);
 
   return (
-    <div className="app">
+    <div className={`app ${isApp ? "in-app-env" : ""}`}>
       <header className="app-header">
-        <div className="app-top-bar">
+        <div className={`app-top-bar ${isApp ? "no-download" : ""}`}>
           <span className="app-top-badge">🌾 奶山羊常用原料智能日粮配比系统</span>
-          <a
-            href="/奶山羊日粮配比助手_Android_v1.0.apk"
-            download="奶山羊日粮配比助手_Android_v1.0.apk"
-            className="app-download-btn"
-            title="点击下载奶山羊日粮配比助手安卓安装包 (APK)"
-          >
-            <span className="app-download-icon">📱</span>
-            <span>下载安卓版 App</span>
-            <span className="app-download-badge">v1.0 · 2.3MB</span>
-          </a>
+          {!isApp && (
+            <a
+              href="/奶山羊日粮配比助手_Android_v1.0.apk"
+              download="奶山羊日粮配比助手_Android_v1.0.apk"
+              className="app-download-btn"
+              title="点击下载奶山羊日粮配比助手安卓安装包 (APK)"
+            >
+              <span className="app-download-icon">📱</span>
+              <span>下载安卓版 App</span>
+              <span className="app-download-badge">v1.0 · 2.3MB</span>
+            </a>
+          )}
         </div>
 
         <h1>奶山羊常用原料日粮配比助手</h1>
@@ -150,16 +184,18 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <div className="footer-download-bar">
-          <span>📲 支持离线手机端使用：</span>
-          <a
-            href="/奶山羊日粮配比助手_Android_v1.0.apk"
-            download="奶山羊日粮配比助手_Android_v1.0.apk"
-            className="footer-download-link"
-          >
-            点击下载奶山羊日粮配比助手安卓手机版 (v1.0.0 APK, 2.3MB)
-          </a>
-        </div>
+        {!isApp && (
+          <div className="footer-download-bar">
+            <span>📲 支持离线手机端使用：</span>
+            <a
+              href="/奶山羊日粮配比助手_Android_v1.0.apk"
+              download="奶山羊日粮配比助手_Android_v1.0.apk"
+              className="footer-download-link"
+            >
+              点击下载奶山羊日粮配比助手安卓手机版 (v1.0.0 APK, 2.3MB)
+            </a>
+          </div>
+        )}
         <div className="footer-disclaimer">
           默认成分数据为估算值；本工具仅覆盖宏量指标，不含微量元素与维生素保证。
         </div>

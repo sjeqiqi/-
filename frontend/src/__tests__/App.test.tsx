@@ -461,4 +461,20 @@ describe("App 三步流程", () => {
     // 结果表仍渲染配方克数（AI 回退不影响确定性结果）
     expect(screen.getByText("3.40")).toBeInTheDocument();
   });
+
+  it("网页端默认显示下载安卓版 App 按钮", () => {
+    vi.stubGlobal("fetch", mockFetch(() => CATALOG));
+    render(<App />);
+    expect(screen.getByText("下载安卓版 App")).toBeInTheDocument();
+    expect(screen.getByText(/点击下载奶山羊日粮配比助手安卓手机版/)).toBeInTheDocument();
+  });
+
+  it("进入 App 原生环境后自动隐藏所有下载按钮", () => {
+    vi.stubGlobal("fetch", mockFetch(() => CATALOG));
+    (window as any).isAndroidApp = true;
+    render(<App />);
+    expect(screen.queryByText("下载安卓版 App")).not.toBeInTheDocument();
+    expect(screen.queryByText(/点击下载奶山羊日粮配比助手安卓手机版/)).not.toBeInTheDocument();
+    delete (window as any).isAndroidApp;
+  });
 });

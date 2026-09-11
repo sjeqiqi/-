@@ -68,7 +68,13 @@ class MainActivity : ComponentActivity() {
                 cacheMode = WebSettings.LOAD_DEFAULT
                 textZoom = 100
                 defaultTextEncodingName = "UTF-8"
+                userAgentString = "$userAgentString DairyGoatApp/1.0"
             }
+
+            addJavascriptInterface(object {
+                @android.webkit.JavascriptInterface
+                fun isApp(): Boolean = true
+            }, "AndroidNative")
 
             // 开启远程调试与 Chrome Inspect
             WebView.setWebContentsDebuggingEnabled(true)
