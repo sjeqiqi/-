@@ -25,10 +25,9 @@ interface Props {
   pastureInfo?: PastureForm;
   onBack: () => void;
   onEditAnimal: () => void;
-  onGoToWeigh?: (feedRows: FeedRow[]) => void;
 }
 
-export function StepResult({ request, pastureInfo, onBack, onEditAnimal, onGoToWeigh }: Props) {
+export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props) {
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
   const [calibration, setCalibration] = useState<CalibrateResult | null>(null);
   const [calibrating, setCalibrating] = useState(false);
@@ -364,7 +363,6 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal, onGoToW
           calibration={calibration}
           calibrateError={calibrateError}
           onCalibrate={handleCalibrate}
-          onGoToWeigh={onGoToWeigh}
         />
       )}
 
@@ -375,23 +373,6 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal, onGoToW
       <div className="actions" style={{ marginTop: "20px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
         <button onClick={onBack}>上一步：修改原料</button>
         <button onClick={onEditAnimal}>重新填写牧场</button>
-        {loaded.kind === "feasible" && onGoToWeigh && (
-          <button
-            type="button"
-            onClick={() => onGoToWeigh(loaded.data.feed_rows)}
-            style={{
-              background: "#0284c7",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "6px",
-              padding: "10px 18px",
-              fontWeight: "bold",
-              cursor: "pointer",
-            }}
-          >
-            🚀 启动智能称重投喂 (树莓派联动/Demo)
-          </button>
-        )}
       </div>
 
       {/* 底部服务协议与免责声明入口 */}
@@ -916,7 +897,6 @@ function FeasibleView(props: {
   calibration: CalibrateResult | null;
   calibrateError: string | null;
   onCalibrate: () => void;
-  onGoToWeigh?: (feedRows: FeedRow[]) => void;
 }) {
   const { data, dimension, coreCount } = props;
   return (

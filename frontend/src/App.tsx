@@ -1,9 +1,8 @@
 import { useCallback, useState } from "react";
-import type { AnimalInput, CalculateRequest, FeedInput, FeedRow } from "./types";
+import type { AnimalInput, CalculateRequest, FeedInput } from "./types";
 import { StepAnimal, type AnimalForm, type PastureForm } from "./components/StepAnimal";
 import { StepFeeds, type FeedForm, type FeedsMode } from "./components/StepFeeds";
 import { StepResult } from "./components/StepResult";
-import { StepWeigh } from "./components/StepWeigh";
 
 export default function App() {
   const [step, setStep] = useState(1);
@@ -31,7 +30,6 @@ export default function App() {
   const [feeds, setFeeds] = useState<FeedForm[] | null>(null);
   const [feedsMode, setFeedsMode] = useState<FeedsMode>("recommended");
   const [request, setRequest] = useState<CalculateRequest | null>(null);
-  const [weighedFeedRows, setWeighedFeedRows] = useState<FeedRow[]>([]);
 
   const handleAnimalNext = useCallback((form: AnimalForm, pastureForm?: PastureForm) => {
     setAnimal(form);
@@ -107,7 +105,6 @@ export default function App() {
           <li className={step === 1 ? "active" : ""}><span>1</span> 羊只信息</li>
           <li className={step === 2 ? "active" : ""}><span>2</span> 原料选择</li>
           <li className={step === 3 ? "active" : ""}><span>3</span> 计算结果</li>
-          <li className={step === 4 ? "active" : ""}><span>4</span> 智能称量</li>
         </ol>
       </header>
 
@@ -134,16 +131,6 @@ export default function App() {
             pastureInfo={pasture}
             onBack={() => setStep(2)}
             onEditAnimal={() => setStep(1)}
-            onGoToWeigh={(rows) => {
-              setWeighedFeedRows(rows);
-              setStep(4);
-            }}
-          />
-        )}
-        {step === 4 && (
-          <StepWeigh
-            feedRows={weighedFeedRows}
-            onBack={() => setStep(3)}
           />
         )}
       </main>
