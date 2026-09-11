@@ -537,6 +537,12 @@ function RationTables(props: {
 
   return (
     <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+        <h4 style={{ margin: 0 }}>📋 原料配比与投喂用量表</h4>
+        <span style={{ fontSize: "12px", color: "#16a34a", background: "#f0fdf4", padding: "2px 8px", borderRadius: "4px", border: "1px solid #bbf7d0", fontWeight: "bold" }}>
+          10 g 整数化
+        </span>
+      </div>
       <div className="table-scroll" role="region" aria-label="每日原料用量" tabIndex={0}>
         <table className="result-table">
           <thead>
@@ -584,7 +590,8 @@ function RationTables(props: {
         )}
       </p>
 
-      <h4>营养复核 <span className="heading-note">按单只日粮标准复核，显示值已四舍五入</span></h4>
+      <h4>② 营养复核</h4>
+      <p className="heading-note" style={{ marginTop: "-2px", marginBottom: "8px" }}>按单只日粮标准复核，显示值已四舍五入</p>
       <div className="table-scroll" role="region" aria-label="营养复核明细" tabIndex={0}>
         <table className="result-table nutrient-table">
           <thead>
@@ -764,6 +771,35 @@ function ExplanationSections(props: {
         </div>
       )}
 
+      {/* 智能通俗饲喂指导（与小程序 AI 决策解读卡片 1:1 对齐） */}
+      {aiAvailable && props.calibration!.explanations.length > 0 && (
+        <div
+          style={{
+            background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
+            border: "1px solid #ddd6fe",
+            borderRadius: "10px",
+            padding: "14px 16px",
+            marginBottom: "16px",
+            boxShadow: "0 2px 8px rgba(79, 70, 229, 0.05)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+            <span style={{ fontSize: "14px", fontWeight: "bold", color: "#4338ca", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span>💡</span>
+              <span>智能通俗饲喂指导</span>
+            </span>
+            <span style={{ fontSize: "11px", background: "#e0e7ff", color: "#4338ca", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
+              DeepSeek AI
+            </span>
+          </div>
+          <ul style={{ margin: 0, paddingLeft: "18px", color: "#3730a3", fontSize: "13px", lineHeight: "1.7" }}>
+            {props.calibration!.explanations.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="explanation-grid">
         <article className="explanation-card">
           <h4>配方特点</h4>
@@ -886,7 +922,6 @@ function ApproximateView(props: {
   const { data, dimension, coreCount } = props;
   return (
     <div>
-      <CoreResultCards totals={data.totals} qualified={false} dimension={dimension} coreCount={coreCount} />
       <div className="approximate-warning" role="alert">
         <h3>这不是合格配方，请先调整</h3>
         <p>
@@ -900,6 +935,15 @@ function ApproximateView(props: {
         )}
       </div>
 
+      {/* 1. 【前置】配方解读（文字与解读前置，和现在小程序一样） */}
+      <ExplanationSections
+        insights={data.ration_insights}
+        managementTips={data.management_tips}
+        risks={data.boundary_statements}
+        qualified={false}
+      />
+
+      {/* 2. 状态与四大核心指标看板 */}
       <div className="result-layer">
         <h4>① 合格状态</h4>
         <div className="result-status result-status-warning">
@@ -908,8 +952,20 @@ function ApproximateView(props: {
         </div>
       </div>
 
-      <div className="result-layer">
-        <h4>② 营养复核</h4>
+      <CoreResultCards totals={data.totals} qualified={false} dimension={dimension} coreCount={coreCount} />
+
+      <h4>还没达标的项目（请逐项检查）</h4>
+      <ul className="unmet">
+        {data.violations.map((v) => (
+          <li key={v.code}>{v.message}</li>
+        ))}
+      </ul>
+
+      <p className="advice">{data.advice}</p>
+      <p className="hint">{data.detail}</p>
+
+      {/* 3. 【后置】配方与用量详情表（配方放最后，和现在小程序一样） */}
+      <div className="result-layer" style={{ marginTop: "24px" }}>
         <RationTables
           rows={data.feed_rows}
           totals={data.totals}
@@ -921,24 +977,7 @@ function ApproximateView(props: {
         />
       </div>
 
-      <h4>还没达标的项目（请逐项检查）</h4>
-      <ul className="unmet">
-        {data.violations.map((v) => (
-          <li key={v.code}>{v.message}</li>
-        ))}
-      </ul>
-
       <BoundaryReminderSection flags={data.ration_insights.boundary_flags} qualified={false} />
-
-      <p className="advice">{data.advice}</p>
-      <p className="hint">{data.detail}</p>
-
-      <ExplanationSections
-        insights={data.ration_insights}
-        managementTips={data.management_tips}
-        risks={data.boundary_statements}
-        qualified={false}
-      />
     </div>
   );
 }
@@ -955,7 +994,19 @@ function FeasibleView(props: {
   const { data, dimension, coreCount } = props;
   return (
     <div>
-      <CoreResultCards totals={data.totals} qualified dimension={dimension} coreCount={coreCount} />
+      {/* 1. 【前置】配方解读与 AI 专家综合决策（与小程序 1:1 对齐，文字与解读前置） */}
+      <ExplanationSections
+        insights={data.ration_insights}
+        managementTips={data.management_tips}
+        risks={data.boundary_statements}
+        qualified
+        calibration={props.calibration}
+        calibrating={props.calibrating}
+        calibrateError={props.calibrateError}
+        onCalibrate={props.onCalibrate}
+      />
+
+      {/* 2. 合格状态与四大核心指标看板 */}
       <div className="result-layer">
         <h4>① 合格状态</h4>
         <div className="result-status">
@@ -967,8 +1018,10 @@ function FeasibleView(props: {
         </div>
       </div>
 
-      <div className="result-layer">
-        <h4>② 营养复核</h4>
+      <CoreResultCards totals={data.totals} qualified dimension={dimension} coreCount={coreCount} />
+
+      {/* 3. 【后置】配方与用量详情表，以及营养复核表（配方放最后，和现在小程序一样） */}
+      <div className="result-layer" style={{ marginTop: "24px" }}>
         <RationTables
           rows={data.feed_rows}
           totals={data.totals}
@@ -980,17 +1033,8 @@ function FeasibleView(props: {
         />
       </div>
 
+      {/* 4. 贴边指标余量说明 */}
       <BoundaryReminderSection flags={data.ration_insights.boundary_flags} qualified />
-      <ExplanationSections
-        insights={data.ration_insights}
-        managementTips={data.management_tips}
-        risks={data.boundary_statements}
-        qualified
-        calibration={props.calibration}
-        calibrating={props.calibrating}
-        calibrateError={props.calibrateError}
-        onCalibrate={props.onCalibrate}
-      />
     </div>
   );
 }

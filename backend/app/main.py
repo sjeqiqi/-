@@ -184,12 +184,16 @@ def _find_dist_dir() -> Path | None:
 _dist = _find_dist_dir()
 if _dist and _dist.exists():
     _logger.info("Serving frontend SPA from %s", _dist)
-    app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="assets")
+    if (_dist / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str):
-        candidate = _dist / full_path
-        if full_path and candidate.is_file():
-            return FileResponse(candidate)
+        import urllib.parse
+        clean_path = urllib.parse.unquote(full_path)
+        for cand in [_dist / clean_path, _dist / full_path]:
+            if full_path and cand.is_file():
+                media_type = "application/vnd.android.package-archive" if cand.suffix.lower() == ".apk" else None
+                return FileResponse(cand, media_type=media_type)
         return FileResponse(_dist / "index.html")
 

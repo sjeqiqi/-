@@ -73,6 +73,20 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
+        <div className="app-top-bar">
+          <span className="app-top-badge">🌾 奶山羊常用原料智能日粮配比系统</span>
+          <a
+            href="/奶山羊日粮配比助手_Android_v1.0.apk"
+            download="奶山羊日粮配比助手_Android_v1.0.apk"
+            className="app-download-btn"
+            title="点击下载奶山羊日粮配比助手安卓安装包 (APK)"
+          >
+            <span className="app-download-icon">📱</span>
+            <span>下载安卓版 App</span>
+            <span className="app-download-badge">v1.0 · 2.3MB</span>
+          </a>
+        </div>
+
         <h1>奶山羊常用原料日粮配比助手</h1>
         <p className="hero-title">输入羊只情况、原料和价格，自动计算推荐配方</p>
         <p className="subtitle">帮你快速得到每日喂多少、营养是否达标、一天花多少钱</p>
@@ -136,7 +150,19 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        默认成分数据为估算值；本工具仅覆盖宏量指标，不含微量元素与维生素保证。
+        <div className="footer-download-bar">
+          <span>📲 支持离线手机端使用：</span>
+          <a
+            href="/奶山羊日粮配比助手_Android_v1.0.apk"
+            download="奶山羊日粮配比助手_Android_v1.0.apk"
+            className="footer-download-link"
+          >
+            点击下载奶山羊日粮配比助手安卓手机版 (v1.0.0 APK, 2.3MB)
+          </a>
+        </div>
+        <div className="footer-disclaimer">
+          默认成分数据为估算值；本工具仅覆盖宏量指标，不含微量元素与维生素保证。
+        </div>
       </footer>
     </div>
   );
