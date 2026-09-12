@@ -168,40 +168,44 @@ export function StepAnimal({ initial, initialPasture, onNext }: Props) {
         </button>
       </div>
 
+      {/* 1. 全国奶山羊优势主产区选择 (两种模式均支持联动产区行情，与微信小程序完全对齐) */}
+      <div className="field" style={{ background: "#f8fafc", padding: "14px", borderRadius: "10px", marginBottom: "18px", border: "1px solid #e2e8f0" }}>
+        <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <strong>📍 奶山羊优势主产区</strong>
+            <span style={{ fontSize: "12px", color: "#64748b" }}>自动联动产区采购行情与营养库</span>
+          </div>
+          <span style={{ fontSize: "12px", color: "#16a34a", background: "#dcfce7", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>
+            {selectedRegion.badge}
+          </span>
+        </label>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+          {DEFAULT_REGIONS.map((r) => (
+            <div
+              key={r.id}
+              onClick={() => setSelectedRegion(r)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: "6px",
+                border: selectedRegion.id === r.id ? "2px solid #16a34a" : "1px solid #e2e8f0",
+                background: selectedRegion.id === r.id ? "#ffffff" : "#f1f5f9",
+                cursor: "pointer",
+                fontSize: "13px",
+              }}
+            >
+              <div style={{ fontWeight: selectedRegion.id === r.id ? "bold" : "normal", color: selectedRegion.id === r.id ? "#166534" : "#334155" }}>
+                {r.name}
+              </div>
+              <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
+                {r.desc.slice(0, 18)}…
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {calcMode === "pasture" && (
         <div className="pasture-section" style={{ background: "#f8fafc", padding: "14px", borderRadius: "10px", marginBottom: "18px", border: "1px solid #e2e8f0" }}>
-          <div className="field" style={{ marginBottom: "14px" }}>
-            <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <strong>📍 奶山羊优势主产区</strong>
-              <span style={{ fontSize: "12px", color: "#16a34a", background: "#dcfce7", padding: "2px 8px", borderRadius: "10px" }}>
-                {selectedRegion.badge}
-              </span>
-            </label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "6px" }}>
-              {DEFAULT_REGIONS.map((r) => (
-                <div
-                  key={r.id}
-                  onClick={() => setSelectedRegion(r)}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: "6px",
-                    border: selectedRegion.id === r.id ? "2px solid #16a34a" : "1px solid #e2e8f0",
-                    background: selectedRegion.id === r.id ? "#ffffff" : "#f1f5f9",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                  }}
-                >
-                  <div style={{ fontWeight: selectedRegion.id === r.id ? "bold" : "normal", color: selectedRegion.id === r.id ? "#166534" : "#334155" }}>
-                    {r.name}
-                  </div>
-                  <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
-                    {r.desc.slice(0, 16)}…
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div className="field" style={{ marginBottom: "14px" }}>
             <label htmlFor="pasture-flock">
               <strong>🐏 全场总存栏量（只）</strong>

@@ -1,6 +1,8 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchFeeds } from "../api";
 import type { AnimalClass, CatalogFeed, FeedOverride } from "../types";
+import { REGIONAL_FEED_DATABASE } from "../types";
+import type { PastureForm } from "./StepAnimal";
 
 export interface FeedForm {
   feed_id: string;
@@ -30,11 +32,12 @@ interface Props {
   initial: FeedForm[] | null;
   initialMode: FeedsMode;
   animalClass: AnimalClass;
+  pasture?: PastureForm;
   onNext: (forms: FeedForm[], mode: FeedsMode) => void;
   onBack: () => void;
 }
 
-export function StepFeeds({ initial, initialMode, animalClass, onNext, onBack }: Props) {
+export function StepFeeds({ initial, initialMode, animalClass, pasture, onNext, onBack }: Props) {
   const [catalog, setCatalog] = useState<CatalogFeed[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mode, setMode] = useState<FeedsMode>(initialMode);
@@ -44,13 +47,19 @@ export function StepFeeds({ initial, initialMode, animalClass, onNext, onBack }:
   );
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [restoreTip, setRestoreTip] = useState<string | null>(null);
+
+  const regionId = pasture?.regionId || "guanzhong";
+  const regionData = REGIONAL_FEED_DATABASE[regionId] || REGIONAL_FEED_DATABASE.guanzhong;
+  const regionName = pasture?.regionName || regionData.name;
+  const regionNote = regionData.note;
 
   useEffect(() => {
-    fetchFeeds()
+    fetchFeeds(regionId)
       .then((res) => {
         setCatalog(res.feeds);
         setForms((prev) => {
-          if (prev.length > 0) return prev;
+          if (initial && prev.length > 0) return prev;
           return res.feeds.map((f) => ({
             feed_id: f.feed_id,
             owned: initialMode === "recommended",
@@ -60,8 +69,23 @@ export function StepFeeds({ initial, initialMode, animalClass, onNext, onBack }:
         });
       })
       .catch((err: Error) => setLoadError(err.message));
-    // 仅在首次加载原料库时初始化勾选；切换模式不重置用户已做出的选择。
-  }, []);
+  }, [regionId]);
+
+  const handleRestoreRegionDefaults = () => {
+    const reg = REGIONAL_FEED_DATABASE[regionId] || REGIONAL_FEED_DATABASE.guanzhong;
+    setForms((prev) =>
+      prev.map((item) => {
+        const regFeed = reg.feeds[item.feed_id];
+        return {
+          ...item,
+          price: regFeed ? String(regFeed.price) : item.price,
+          override: null,
+        };
+      }),
+    );
+    setRestoreTip(`已成功还原为【${reg.name}】产区默认采购行情与实测指标！`);
+    setTimeout(() => setRestoreTip(null), 3000);
+  };
 
   const updateForm = (feedId: string, patch: Partial<FeedForm>) => {
     setForms((prev) => prev.map((f) => (f.feed_id === feedId ? { ...f, ...patch } : f)));
@@ -110,7 +134,32 @@ export function StepFeeds({ initial, initialMode, animalClass, onNext, onBack }:
       return;
     }
     setError(null);
-    onNext(forms, mode);
+
+    // 自动对齐小程序：将产区特色营养实测指标作为原料基础指标（用户自定义化验单参数具有最高覆盖优先级）
+    const enrichedForms = forms.map((f) => {
+      const cat = catalog.find((c) => c.feed_id === f.feed_id);
+      const userOv = f.override || {};
+      const regOv: Record<string, string> = {};
+      if (cat) {
+        if (cat.dm_pct != null) regOv.dm_pct = String(cat.dm_pct);
+        if (cat.me_mj_per_kg_dm != null) regOv.me_mj_per_kg_dm = String(cat.me_mj_per_kg_dm);
+        if (cat.cp_pct_dm != null) regOv.cp_pct_dm = String(cat.cp_pct_dm);
+        if (cat.ndf_pct_dm != null) regOv.ndf_pct_dm = String(cat.ndf_pct_dm);
+        if (cat.ca_pct_dm != null) regOv.ca_pct_dm = String(cat.ca_pct_dm);
+        if (cat.p_pct_dm != null) regOv.p_pct_dm = String(cat.p_pct_dm);
+      }
+      for (const [k, v] of Object.entries(userOv)) {
+        if (v !== undefined && v !== null && String(v).trim() !== "") {
+          regOv[k] = String(v);
+        }
+      }
+      return {
+        ...f,
+        override: Object.keys(regOv).length > 0 ? (regOv as unknown as FeedOverride) : null,
+      };
+    });
+
+    onNext(enrichedForms, mode);
   };
 
   if (loadError) {
@@ -139,6 +188,81 @@ export function StepFeeds({ initial, initialMode, animalClass, onNext, onBack }:
     <section className="card" aria-label="原料与价格">
       <h2>第二步：选择原料并填写价格</h2>
       <p className="section-lead">先选你能用的原料，再把价格改成当地实际价格。</p>
+
+      {/* 产区采购行情与营养数据库联动指示条 (全面对齐微信小程序) */}
+      <div
+        className="region-indicator-card"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: "#f0fdf4",
+          border: "1px solid #bbf7d0",
+          borderRadius: "10px",
+          padding: "12px 16px",
+          marginBottom: "16px",
+          gap: "12px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "22px" }}>📍</span>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <strong style={{ color: "#166534", fontSize: "15px" }}>{regionName}</strong>
+              <span
+                style={{
+                  background: "#16a34a",
+                  color: "#ffffff",
+                  fontSize: "11px",
+                  fontWeight: "bold",
+                  padding: "2px 8px",
+                  borderRadius: "10px",
+                }}
+              >
+                行情已联动
+              </span>
+            </div>
+            <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#475569" }}>
+              {regionNote}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="btn-restore-region"
+          onClick={handleRestoreRegionDefaults}
+          style={{
+            padding: "6px 14px",
+            fontSize: "12px",
+            background: "#ffffff",
+            border: "1px solid #86efac",
+            color: "#166534",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontWeight: "bold",
+            whiteSpace: "nowrap",
+          }}
+        >
+          ↺ 还原产区默认
+        </button>
+      </div>
+
+      {restoreTip && (
+        <div
+          style={{
+            background: "#ecfdf5",
+            color: "#065f46",
+            padding: "8px 14px",
+            borderRadius: "6px",
+            marginBottom: "14px",
+            fontSize: "13px",
+            border: "1px solid #a7f3d0",
+          }}
+        >
+          ✓ {restoreTip}
+        </div>
+      )}
 
       <div className="mode-toggle" role="radiogroup" aria-label="原料选择模式">
         <button

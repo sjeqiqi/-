@@ -6,7 +6,16 @@ import type {
   InfeasibleRation,
   RationResult,
 } from "../types";
-import { DEFAULT_FEED_CATALOG, getBuiltinFeedsMap, type CalculatorFeedSpec } from "./feedsCatalog";
+import {
+  DEFAULT_FEED_CATALOG,
+  getBuiltinFeedsMap,
+  getRegionalFeedsCatalog,
+  type CalculatorFeedSpec,
+} from "./feedsCatalog";
+
+export { getBuiltinFeedsMap, getRegionalFeedsCatalog };
+export { REGIONAL_FEED_DATABASE } from "../types";
+
 import { buildRationInsights } from "./insights";
 import { computeRequirements, type Requirements } from "./nutrition";
 import {

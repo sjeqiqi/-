@@ -1,5 +1,6 @@
 // 13 种常见奶山羊饲料原料基础数据库（对齐 v1.json，支持用户端参数与价格覆盖）
 import type { CatalogFeed, FeedCatalogResponse } from "../types";
+import { REGIONAL_FEED_DATABASE } from "../types";
 
 export interface CalculatorFeedSpec extends CatalogFeed {
   dm_fraction: number;
@@ -244,6 +245,29 @@ export const DEFAULT_FEED_CATALOG: FeedCatalogResponse = {
   ],
 };
 
+export function getRegionalFeedsCatalog(regionId: string = "guanzhong"): FeedCatalogResponse {
+  const regData = REGIONAL_FEED_DATABASE[regionId] || REGIONAL_FEED_DATABASE.guanzhong;
+  const feeds = DEFAULT_FEED_CATALOG.feeds.map((base) => {
+    const reg = regData?.feeds[base.feed_id];
+    if (!reg) return { ...base };
+    return {
+      ...base,
+      default_price_rmb_per_kg: reg.price,
+      dm_pct: reg.dm_pct,
+      me_mj_per_kg_dm: reg.me,
+      cp_pct_dm: reg.cp_pct_dm,
+      ndf_pct_dm: reg.ndf_pct_dm,
+      ca_pct_dm: reg.ca,
+      p_pct_dm: reg.p,
+    };
+  });
+  return {
+    ...DEFAULT_FEED_CATALOG,
+    note: `${regData?.name || "优势主产区"}行情与营养实测数据库联动：${regData?.note || ""}`,
+    feeds,
+  };
+}
+
 export function getBuiltinFeedsMap(): Record<string, CalculatorFeedSpec> {
   const map: Record<string, CalculatorFeedSpec> = {};
   for (const f of DEFAULT_FEED_CATALOG.feeds) {
@@ -255,3 +279,4 @@ export function getBuiltinFeedsMap(): Record<string, CalculatorFeedSpec> {
   }
   return map;
 }
+

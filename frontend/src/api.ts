@@ -2,7 +2,7 @@
 // 日粮优化及原料库 100% 本地离线执行（零网络延迟，高可靠性）
 // AI 深度校准功能正常访问云端微服务 API
 
-import { calculateRationLocal, DEFAULT_FEED_CATALOG } from "./calculator";
+import { calculateRationLocal, getRegionalFeedsCatalog } from "./calculator";
 import type { CalibrateResult, CalculateRequest, FeedCatalogResponse, RationResult } from "./types";
 
 export const CLOUD_API_BASE = "https://django-olww-297810-6-1469616598.sh.run.tcloudbase.com";
@@ -65,11 +65,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
  * 在生产/移动端环境中直接由本地极速提供（0ms，无需等待网络），
  * 在单元测试环境下遵从测试 mock。
  */
-export async function fetchFeeds(): Promise<FeedCatalogResponse> {
+export async function fetchFeeds(regionId: string = "guanzhong"): Promise<FeedCatalogResponse> {
   if (Boolean((import.meta as any).env?.MODE === "test")) {
-    return request<FeedCatalogResponse>("/api/feeds");
+    try {
+      return await request<FeedCatalogResponse>("/api/feeds");
+    } catch {
+      return getRegionalFeedsCatalog(regionId);
+    }
   }
-  return DEFAULT_FEED_CATALOG;
+  return getRegionalFeedsCatalog(regionId);
 }
 
 /**

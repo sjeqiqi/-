@@ -46,8 +46,8 @@ export default function App() {
   });
   const [pasture, setPasture] = useState<PastureForm>({
     calcMode: "pasture",
-    regionId: "shaanxi",
-    regionName: "陕西关中 (主产区)",
+    regionId: "guanzhong",
+    regionName: "陕西关中优势产区",
     totalFlockCount: "500",
     lactatingPct: 70,
     lactatingCount: 350,
@@ -56,7 +56,7 @@ export default function App() {
     lambPct: 10,
     lambCount: 50,
     coreTarget: "lactating",
-    coreTargetName: "泌乳核心群 (产奶期)",
+    coreTargetName: "成年泌乳期生产群",
     coreCount: 350,
   });
   const [feeds, setFeeds] = useState<FeedForm[] | null>(null);
@@ -66,10 +66,14 @@ export default function App() {
   const handleAnimalNext = useCallback((form: AnimalForm, pastureForm?: PastureForm) => {
     setAnimal(form);
     if (pastureForm) {
+      if (pastureForm.regionId !== pasture.regionId) {
+        // 产区发生变更，清空先前暂存的饲料表单，使 StepFeeds 重新载入新产区的市场行情与实测指标
+        setFeeds(null);
+      }
       setPasture(pastureForm);
     }
     setStep(2);
-  }, []);
+  }, [pasture.regionId]);
 
   const handleFeedsNext = useCallback((forms: FeedForm[], mode: FeedsMode) => {
     setFeeds(forms);
@@ -169,6 +173,7 @@ export default function App() {
             initial={feeds}
             initialMode={feedsMode}
             animalClass={animal.class}
+            pasture={pasture}
             onNext={handleFeedsNext}
             onBack={() => setStep(1)}
           />
