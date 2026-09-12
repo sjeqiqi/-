@@ -118,7 +118,7 @@ export const FALLBACK_EXPLANATIONS = [
 
 export const FALLBACK_RISKS = [
   "输入条件发生变化时，请更新对应输入后重新计算，不建议直接人工修改各原料克数。",
-  "更换日粮配方或调整原料时，建议保持 5~7 天平缓过渡，避免骤换引起瘤胃酸中毒或腹泻。",
+  "更换日粮配方或调整原料时，应平缓渐进过渡，避免骤换引起瘤胃消化功能紊乱，具体过渡周期应结合专业人员建议确定。",
 ];
 
 export const FALLBACK_NOTE = "已通过美国 NRC（2007）文献模型与国家《奶山羊饲养管理技术规范》（NY/T 2835）复核。";
@@ -189,15 +189,6 @@ export async function calibrateRation(
   req: CalculateRequest,
   rationResult?: RationResult,
 ): Promise<CalibrateResult> {
-  // 单元测试环境直接走测试 mock
-  if (Boolean((import.meta as any).env?.MODE === "test")) {
-    return request<CalibrateResult>("/api/rations/calibrate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req),
-    });
-  }
-
   // 1. 构造发给大模型的完整事实上下文（输入参数 + 运筹求解出的真实配方与营养指标）
   const userContent: Record<string, any> = {
     animal: req.animal,

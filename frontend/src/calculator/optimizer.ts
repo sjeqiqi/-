@@ -237,6 +237,22 @@ export function evaluateRation(
   };
 }
 
+const DEFAULT_PRICE_WEIGHTS: Record<string, number> = {
+  corn: 2.4,
+  soybean_meal: 3.6,
+  wheat_bran: 1.8,
+  rapeseed_meal: 2.8,
+  peanut_meal: 3.8,
+  distillers_grains: 1.8,
+  alfalfa_hay: 2.0,
+  corn_silage: 0.45,
+  wheat_straw: 0.5,
+  apple_pomace: 0.3,
+  salt: 1.0,
+  limestone: 0.4,
+  baking_soda: 2.5,
+};
+
 export function buildAndSolve(
   candidate: CalculatorFeedSpec[],
   req: Requirements,
@@ -244,7 +260,18 @@ export function buildAndSolve(
 ): { feasible: boolean; x_dm: Record<string, number>; message: string } {
   const n = candidate.length;
   const t_idx = n;
-  const c = candidate.map((f) => f.default_price_rmb_per_kg / f.dm_fraction).concat([0.0]);
+  const allZeroPrice = candidate.every((f) => (f.default_price_rmb_per_kg ?? 0) <= 0);
+  const c = candidate
+    .map((f) => {
+      if (allZeroPrice) {
+        // 极端全零价格场景（如自家农场免费饲草测试）：以标准营养经济学次序为正则微扰项，
+        // 保持单纯形法的基底稀疏性与营养合理性，避免在退化超平面上随机分摊导致 10g 整数化发散
+        const baseWeight = DEFAULT_PRICE_WEIGHTS[f.feed_id] ?? (f.is_forage ? 1.5 : 3.0);
+        return (baseWeight / f.dm_fraction) * 1e-4;
+      }
+      return f.default_price_rmb_per_kg / f.dm_fraction;
+    })
+    .concat([0.0]);
 
   const A_ub: number[][] = [];
   const b_ub: number[] = [];
