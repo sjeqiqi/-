@@ -456,7 +456,6 @@ describe("App 三步流程", () => {
     await user.click(screen.getByRole("button", { name: /下一步：计算配方/ }));
     await screen.findByText("第三步：配方结果");
     await screen.findByText("玉米");
-    await user.click(screen.getByRole("button", { name: /生成 AI 通俗解读/ }));
     expect(await screen.findByTestId("ai-fallback")).toBeInTheDocument();
     // 结果表仍渲染配方克数（AI 回退不影响确定性结果）
     expect(screen.getByText("3.40")).toBeInTheDocument();

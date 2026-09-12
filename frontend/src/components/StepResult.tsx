@@ -801,14 +801,29 @@ function ExplanationSections(props: {
           <h3>配方解读</h3>
           <p>用四部分说明这份配方怎么看、怎么用。</p>
         </div>
-        {props.onCalibrate && (
-          <button className="secondary-ai" onClick={props.onCalibrate} disabled={props.calibrating}>
-            {props.calibrating ? "正在补充说明…" : "生成 AI 通俗解读"}
-          </button>
-        )}
       </div>
 
-      {props.calibrateError && <p className="error-text">AI 补充说明暂时没有生成，稍后可以再试。</p>}
+      {props.calibrateError && (
+        <p className="error-text">
+          AI 补充说明暂时没有生成，稍后可以再试。
+          {props.onCalibrate && (
+            <button
+              type="button"
+              onClick={props.onCalibrate}
+              style={{
+                marginLeft: "8px",
+                background: "none",
+                border: "none",
+                color: "#16a34a",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              点击重试
+            </button>
+          )}
+        </p>
+      )}
       {props.calibration?.ai_unavailable && (
         <p className="hint" data-testid="ai-fallback">AI 解读暂不可用，已使用本地固定说明；计算结果未受影响。</p>
       )}
