@@ -89,12 +89,12 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
         setStreamingText(fullThinking);
         setThinkingStage(4);
 
-        // 停留 300ms 保证用户看清收敛完成，随后统一展开完整配方看板与 AI 专家指导
+        // 停留 200ms 保证用户看清收敛完成，随后统一展开完整配方看板与 AI 专家指导
         setTimeout(() => {
           if (!cancelled) {
             setIsThinking(false);
           }
-        }, 300);
+        }, 200);
       }
     };
 
@@ -113,13 +113,13 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
         setThinkingDuration(`${sec}s`);
       }, 100);
 
-      // 保证至少 7～8 秒（7.5s）推演沉浸感，等待大模型输出传回手机后统一产出
+      // 保证达到 2～2.5 秒思考推演，等待大模型输出传回手机后统一产出
       minTimer = setTimeout(() => {
         hasReachedMinTime = true;
         tryFinishThinking();
-      }, 7500);
+      }, 2000);
 
-      // 最长安全超时 10 秒（防止弱网长时间挂起）
+      // 最长安全超时 8 秒（防止弱网长时间挂起）
       safetyTimer = setTimeout(() => {
         if (!isAiFinished) {
           console.warn("AI 接口响应超过安全上限，切换至权威行业标准建议并统一展示");
@@ -127,11 +127,11 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
           setCalibrating(false);
           tryFinishThinking();
         }
-      }, 10000);
+      }, 8000);
 
-      // 流式打字推演：每 35ms 递增 4 个字符，约 6.5~7.0 秒平滑完成 4 阶段推演
+      // 流式打字推演：每 30ms 递增 14 个字符，约 1.6 秒流畅完成 4 阶段推演
       let curIdx = 0;
-      const chunkSize = 4;
+      const chunkSize = 14;
       streamTimerRef.current = setInterval(() => {
         curIdx += chunkSize;
         if (curIdx >= fullThinking.length) {
@@ -150,7 +150,7 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
             terminalBodyRef.current.scrollTop = terminalBodyRef.current.scrollHeight;
           }
         }
-      }, 35);
+      }, 30);
     }
 
     calculateRation(request)
