@@ -79,6 +79,7 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
     let isAiFinished = isTestMode;
     let hasReachedMinTime = isTestMode;
     let finishTriggered = false;
+    const startMs = Date.now();
 
     const tryFinishThinking = () => {
       if (finishTriggered || cancelled) return;
@@ -89,12 +90,16 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
         setStreamingText(fullThinking);
         setThinkingStage(4);
 
-        // 停留 200ms 保证用户看清收敛完成，随后统一展开完整配方看板与 AI 专家指导
+        // 记录真实的动态最终耗时（例如 2.1s, 2.4s, 2.3s, 1.9s, 2.5s，每次计算自然浮动）
+        const finalSec = ((Date.now() - startMs) / 1000).toFixed(1);
+        setThinkingDuration(`${finalSec}s`);
+
+        // 停留 180ms 保证用户看清收敛完成，随后统一展开完整配方看板与 AI 专家指导
         setTimeout(() => {
           if (!cancelled) {
             setIsThinking(false);
           }
-        }, 200);
+        }, 180);
       }
     };
 
@@ -107,17 +112,17 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
       setThinkingDuration("0.0s");
     } else {
       // 启动毫秒计时器 (每 100ms 更新一次，保持与微信小程序完全一致的 0.0s 动态计时)
-      const startMs = Date.now();
       durationTimerRef.current = setInterval(() => {
         const sec = ((Date.now() - startMs) / 1000).toFixed(1);
         setThinkingDuration(`${sec}s`);
       }, 100);
 
-      // 保证达到 2～2.5 秒思考推演，等待大模型输出传回手机后统一产出
+      // 生成 1.9s ~ 2.6s 之间的拟真动态推演时长（每次计算随机浮动，告别机械死板的固定数字）
+      const dynamicTargetMs = 1900 + Math.floor(Math.random() * 750);
       minTimer = setTimeout(() => {
         hasReachedMinTime = true;
         tryFinishThinking();
-      }, 2000);
+      }, dynamicTargetMs);
 
       // 最长安全超时 8 秒（防止弱网长时间挂起）
       safetyTimer = setTimeout(() => {
