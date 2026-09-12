@@ -243,6 +243,28 @@ describe("App 三步流程", () => {
     expect(screen.getByText("第一步：填写羊只信息")).toBeInTheDocument();
   });
 
+  it("规模化牧场支持只数与占比双向自由修改及核心群切换", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    // 默认展示规模化牧场 500 只
+    const flockInput = screen.getByLabelText(/全场总存栏量/);
+    expect(flockInput).toHaveValue(500);
+
+    // 修改成年泌乳群只数为 400
+    const lactatingCountInput = screen.getByTitle("点击直接修改成年泌乳群只数");
+    await user.clear(lactatingCountInput);
+    await user.type(lactatingCountInput, "400");
+    expect(lactatingCountInput).toHaveValue(400);
+
+    // 自动更新总存栏量 (400 + 100 + 50 = 550)
+    expect(flockInput).toHaveValue(550);
+
+    // 设青年育成羊为核心群
+    const setGrowingBtn = screen.getByRole("button", { name: "设青年育成羊为核心群" });
+    await user.click(setGrowingBtn);
+    expect(screen.getByText(/青年育成羊群/)).toBeInTheDocument();
+  });
+
   it("未勾选任何允许原料时提示错误", async () => {
     const user = userEvent.setup();
     render(<App />);

@@ -52,6 +52,23 @@ export function StepAnimal({ initial, initialPasture, onNext }: Props) {
   const [growingPct, setGrowingPct] = useState<number>(initialPasture?.growingPct ?? 20);
   const [lambPct, setLambPct] = useState<number>(initialPasture?.lambPct ?? 10);
 
+  const initialTotal = Math.max(1, parseInt(initialPasture?.totalFlockCount || "500", 10) || 500);
+  const [lactatingCount, setLactatingCount] = useState<number>(
+    initialPasture?.lactatingCount ?? Math.round((initialTotal * (initialPasture?.lactatingPct ?? 70)) / 100),
+  );
+  const [growingCount, setGrowingCount] = useState<number>(
+    initialPasture?.growingCount ?? Math.round((initialTotal * (initialPasture?.growingPct ?? 20)) / 100),
+  );
+  const [lambCount, setLambCount] = useState<number>(
+    initialPasture?.lambCount ??
+      Math.max(
+        0,
+        initialTotal -
+          (initialPasture?.lactatingCount ?? Math.round((initialTotal * (initialPasture?.lactatingPct ?? 70)) / 100)) -
+          (initialPasture?.growingCount ?? Math.round((initialTotal * (initialPasture?.growingPct ?? 20)) / 100)),
+      ),
+  );
+
   const [coreTarget, setCoreTarget] = useState<"lactating" | "growing" | "lamb">(
     initialPasture?.coreTarget || "lactating",
   );
@@ -59,10 +76,86 @@ export function StepAnimal({ initial, initialPasture, onNext }: Props) {
   const [form, setForm] = useState<AnimalForm>(initial);
   const [errors, setErrors] = useState<string[]>([]);
 
-  const totalNum = Math.max(1, parseInt(totalFlockCount, 10) || 500);
-  const lactatingCount = Math.round((totalNum * lactatingPct) / 100);
-  const growingCount = Math.round((totalNum * growingPct) / 100);
-  const lambCount = Math.max(0, totalNum - lactatingCount - growingCount);
+  // 1. 直接改某群体只数（只数输入）：自动计算新总数与各群体占比
+  const handleCountChange = (stage: "lactating" | "growing" | "lamb", rawVal: string) => {
+    let val = parseInt(rawVal, 10);
+    if (isNaN(val) || val < 0) val = 0;
+
+    const lCount = stage === "lactating" ? val : lactatingCount;
+    const gCount = stage === "growing" ? val : growingCount;
+    const bCount = stage === "lamb" ? val : lambCount;
+
+    const newTotal = lCount + gCount + bCount;
+    const lPct = newTotal > 0 ? Math.round((lCount / newTotal) * 100) : 0;
+    const gPct = newTotal > 0 ? Math.round((gCount / newTotal) * 100) : 0;
+    const bPct = newTotal > 0 ? Math.max(0, 100 - lPct - gPct) : 0;
+
+    setTotalFlockCount(String(newTotal));
+    setLactatingCount(lCount);
+    setGrowingCount(gCount);
+    setLambCount(bCount);
+    setLactatingPct(lPct);
+    setGrowingPct(gPct);
+    setLambPct(bPct);
+  };
+
+  // 2. 直接改某群体占比（百分比输入）：自动平滑联动其余群体，占比总和恒为 100%
+  const handlePctChange = (stage: "lactating" | "growing" | "lamb", rawVal: string) => {
+    let val = parseInt(rawVal, 10);
+    if (isNaN(val) || val < 0) val = 0;
+    if (val > 100) val = 100;
+
+    const total = Math.max(0, parseInt(totalFlockCount, 10) || 500);
+    let lPct = lactatingPct;
+    let gPct = growingPct;
+    let bPct = lambPct;
+
+    if (stage === "lactating") {
+      lPct = val;
+      const rem = 100 - lPct;
+      gPct = Math.round(rem * (2 / 3));
+      bPct = Math.max(0, rem - gPct);
+    } else if (stage === "growing") {
+      gPct = val;
+      const rem = 100 - gPct;
+      lPct = Math.round(rem * 0.7);
+      bPct = Math.max(0, rem - lPct);
+    } else if (stage === "lamb") {
+      bPct = val;
+      const rem = 100 - bPct;
+      lPct = Math.round(rem * 0.7);
+      gPct = Math.max(0, rem - lPct);
+    }
+
+    const lCount = Math.round(total * (lPct / 100));
+    const gCount = Math.round(total * (gPct / 100));
+    const bCount = Math.max(0, total - lCount - gCount);
+
+    setLactatingPct(lPct);
+    setGrowingPct(gPct);
+    setLambPct(bPct);
+    setLactatingCount(lCount);
+    setGrowingCount(gCount);
+    setLambCount(bCount);
+  };
+
+  // 3. 修改全场总存栏量：根据当前各群体占比重新计算只数
+  const handleTotalChange = (valStr: string) => {
+    setTotalFlockCount(valStr);
+    const total = Math.max(0, parseInt(valStr, 10) || 0);
+    const lCount = Math.round(total * (lactatingPct / 100));
+    const gCount = Math.round(total * (growingPct / 100));
+    const bCount = Math.max(0, total - lCount - gCount);
+    setLactatingCount(lCount);
+    setGrowingCount(gCount);
+    setLambCount(bCount);
+  };
+
+  const selectCoreTarget = (val: "lactating" | "growing" | "lamb") => {
+    setCoreTarget(val);
+    if (val === "lactating") update({ class: "lactating" });
+    else update({ class: "maintenance" });
+  };
 
   const coreTargetName =
     coreTarget === "lactating"
@@ -214,10 +307,10 @@ export function StepAnimal({ initial, initialPasture, onNext }: Props) {
               id="pasture-flock"
               type="number"
               inputMode="numeric"
-              min="10"
-              max="20000"
+              min="1"
+              max="50000"
               value={totalFlockCount}
-              onChange={(e) => setTotalFlockCount(e.target.value)}
+              onChange={(e) => handleTotalChange(e.target.value)}
               style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", marginTop: "4px" }}
             />
             <div style={{ display: "flex", gap: "6px", marginTop: "6px" }}>
@@ -225,7 +318,7 @@ export function StepAnimal({ initial, initialPasture, onNext }: Props) {
                 <button
                   key={cnt}
                   type="button"
-                  onClick={() => setTotalFlockCount(cnt)}
+                  onClick={() => handleTotalChange(cnt)}
                   style={{
                     padding: "3px 10px",
                     borderRadius: "12px",
@@ -243,52 +336,222 @@ export function StepAnimal({ initial, initialPasture, onNext }: Props) {
           </div>
 
           <div className="field" style={{ marginBottom: "14px" }}>
-            <label><strong>📊 羊群结构分布与只数</strong></label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px", marginTop: "6px" }}>
-              <div style={{ background: "#ffffff", padding: "8px", borderRadius: "6px", border: "1px solid #e2e8f0", textAlign: "center" }}>
-                <div style={{ fontSize: "12px", color: "#475569" }}>成年泌乳群</div>
-                <div style={{ fontSize: "16px", fontWeight: "bold", color: "#166534", margin: "3px 0" }}>{lactatingCount} <small style={{ fontSize: "11px" }}>只</small></div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", fontSize: "11px", color: "#64748b" }}>
-                  <span>占比</span>
-                  <input
-                    type="number"
-                    min="10"
-                    max="90"
-                    value={lactatingPct}
-                    onChange={(e) => setLactatingPct(Math.max(10, Math.min(90, parseInt(e.target.value, 10) || 70)))}
-                    style={{ width: "42px", padding: "2px", textAlign: "center", border: "1px solid #cbd5e1", borderRadius: "4px" }}
-                  />
-                  <span>%</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <label style={{ margin: 0 }}><strong>📊 羊群结构分布与只数</strong></label>
+              <span style={{ fontSize: "11px", color: "#64748b" }}>只数与占比均可自由直接修改</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginTop: "4px" }}>
+              {/* 1. 成年泌乳群 */}
+              <div
+                style={{
+                  background: "#ffffff",
+                  padding: "10px 8px",
+                  borderRadius: "8px",
+                  border: coreTarget === "lactating" ? "2px solid #16a34a" : "1px solid #e2e8f0",
+                  textAlign: "center",
+                  boxShadow: coreTarget === "lactating" ? "0 2px 8px rgba(22,163,74,0.12)" : "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: "bold", color: "#1e293b", marginBottom: "4px" }}>
+                    成年泌乳群
+                  </div>
+                  {coreTarget === "lactating" ? (
+                    <span style={{ fontSize: "10px", background: "#dcfce7", color: "#166534", padding: "1px 6px", borderRadius: "10px", fontWeight: "bold" }}>
+                      ✓ 核心群
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label="设成年泌乳群为核心群"
+                      onClick={() => selectCoreTarget("lactating")}
+                      style={{ fontSize: "10px", background: "#f1f5f9", color: "#64748b", border: "1px solid #cbd5e1", padding: "1px 6px", borderRadius: "10px", cursor: "pointer" }}
+                    >
+                      设为核心
+                    </button>
+                  )}
                 </div>
-              </div>
-              <div style={{ background: "#ffffff", padding: "8px", borderRadius: "6px", border: "1px solid #e2e8f0", textAlign: "center" }}>
-                <div style={{ fontSize: "12px", color: "#475569" }}>青年育成羊</div>
-                <div style={{ fontSize: "16px", fontWeight: "bold", color: "#0284c7", margin: "3px 0" }}>{growingCount} <small style={{ fontSize: "11px" }}>只</small></div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", fontSize: "11px", color: "#64748b" }}>
-                  <span>占比</span>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "3px", margin: "8px 0" }}>
                   <input
                     type="number"
-                    min="5"
-                    max="50"
-                    value={growingPct}
-                    onChange={(e) => setGrowingPct(Math.max(5, Math.min(50, parseInt(e.target.value, 10) || 20)))}
-                    style={{ width: "42px", padding: "2px", textAlign: "center", border: "1px solid #cbd5e1", borderRadius: "4px" }}
-                  />
-                  <span>%</span>
-                </div>
-              </div>
-              <div style={{ background: "#ffffff", padding: "8px", borderRadius: "6px", border: "1px solid #e2e8f0", textAlign: "center" }}>
-                <div style={{ fontSize: "12px", color: "#475569" }}>断奶羔羊</div>
-                <div style={{ fontSize: "16px", fontWeight: "bold", color: "#d97706", margin: "3px 0" }}>{lambCount} <small style={{ fontSize: "11px" }}>只</small></div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", fontSize: "11px", color: "#64748b" }}>
-                  <span>占比</span>
-                  <input
-                    type="number"
+                    inputMode="numeric"
                     min="0"
-                    max="40"
+                    value={lactatingCount}
+                    onChange={(e) => handleCountChange("lactating", e.target.value)}
+                    style={{
+                      width: "60px",
+                      padding: "4px 2px",
+                      textAlign: "center",
+                      fontWeight: "bold",
+                      fontSize: "16px",
+                      color: "#166534",
+                      border: "1px solid #86efac",
+                      borderRadius: "6px",
+                      background: "#f0fdf4",
+                    }}
+                    title="点击直接修改成年泌乳群只数"
+                  />
+                  <span style={{ fontSize: "13px", color: "#166534", fontWeight: "bold" }}>只</span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "3px", fontSize: "11px", color: "#64748b" }}>
+                  <span>占比</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    max="100"
+                    value={lactatingPct}
+                    onChange={(e) => handlePctChange("lactating", e.target.value)}
+                    style={{ width: "42px", padding: "2px 0", textAlign: "center", border: "1px solid #cbd5e1", borderRadius: "4px", fontSize: "11px" }}
+                  />
+                  <span>%</span>
+                </div>
+              </div>
+
+              {/* 2. 青年育成羊 */}
+              <div
+                style={{
+                  background: "#ffffff",
+                  padding: "10px 8px",
+                  borderRadius: "8px",
+                  border: coreTarget === "growing" ? "2px solid #0284c7" : "1px solid #e2e8f0",
+                  textAlign: "center",
+                  boxShadow: coreTarget === "growing" ? "0 2px 8px rgba(2,132,199,0.12)" : "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: "bold", color: "#1e293b", marginBottom: "4px" }}>
+                    青年育成羊
+                  </div>
+                  {coreTarget === "growing" ? (
+                    <span style={{ fontSize: "10px", background: "#e0f2fe", color: "#0369a1", padding: "1px 6px", borderRadius: "10px", fontWeight: "bold" }}>
+                      ✓ 核心群
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label="设青年育成羊为核心群"
+                      onClick={() => selectCoreTarget("growing")}
+                      style={{ fontSize: "10px", background: "#f1f5f9", color: "#64748b", border: "1px solid #cbd5e1", padding: "1px 6px", borderRadius: "10px", cursor: "pointer" }}
+                    >
+                      设为核心
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "3px", margin: "8px 0" }}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={growingCount}
+                    onChange={(e) => handleCountChange("growing", e.target.value)}
+                    style={{
+                      width: "60px",
+                      padding: "4px 2px",
+                      textAlign: "center",
+                      fontWeight: "bold",
+                      fontSize: "16px",
+                      color: "#0284c7",
+                      border: "1px solid #7dd3fc",
+                      borderRadius: "6px",
+                      background: "#f0f9ff",
+                    }}
+                    title="点击直接修改青年育成羊只数"
+                  />
+                  <span style={{ fontSize: "13px", color: "#0284c7", fontWeight: "bold" }}>只</span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "3px", fontSize: "11px", color: "#64748b" }}>
+                  <span>占比</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    max="100"
+                    value={growingPct}
+                    onChange={(e) => handlePctChange("growing", e.target.value)}
+                    style={{ width: "42px", padding: "2px 0", textAlign: "center", border: "1px solid #cbd5e1", borderRadius: "4px", fontSize: "11px" }}
+                  />
+                  <span>%</span>
+                </div>
+              </div>
+
+              {/* 3. 断奶羔羊 */}
+              <div
+                style={{
+                  background: "#ffffff",
+                  padding: "10px 8px",
+                  borderRadius: "8px",
+                  border: coreTarget === "lamb" ? "2px solid #d97706" : "1px solid #e2e8f0",
+                  textAlign: "center",
+                  boxShadow: coreTarget === "lamb" ? "0 2px 8px rgba(217,119,6,0.12)" : "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: "bold", color: "#1e293b", marginBottom: "4px" }}>
+                    断奶羔羊
+                  </div>
+                  {coreTarget === "lamb" ? (
+                    <span style={{ fontSize: "10px", background: "#fef3c7", color: "#b45309", padding: "1px 6px", borderRadius: "10px", fontWeight: "bold" }}>
+                      ✓ 核心群
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label="设断奶羔羊为核心群"
+                      onClick={() => selectCoreTarget("lamb")}
+                      style={{ fontSize: "10px", background: "#f1f5f9", color: "#64748b", border: "1px solid #cbd5e1", padding: "1px 6px", borderRadius: "10px", cursor: "pointer" }}
+                    >
+                      设为核心
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "3px", margin: "8px 0" }}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={lambCount}
+                    onChange={(e) => handleCountChange("lamb", e.target.value)}
+                    style={{
+                      width: "60px",
+                      padding: "4px 2px",
+                      textAlign: "center",
+                      fontWeight: "bold",
+                      fontSize: "16px",
+                      color: "#d97706",
+                      border: "1px solid #fde68a",
+                      borderRadius: "6px",
+                      background: "#fffbeb",
+                    }}
+                    title="点击直接修改断奶羔羊只数"
+                  />
+                  <span style={{ fontSize: "13px", color: "#d97706", fontWeight: "bold" }}>只</span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "3px", fontSize: "11px", color: "#64748b" }}>
+                  <span>占比</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    max="100"
                     value={lambPct}
-                    onChange={(e) => setLambPct(Math.max(0, Math.min(40, parseInt(e.target.value, 10) || 10)))}
-                    style={{ width: "42px", padding: "2px", textAlign: "center", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+                    onChange={(e) => handlePctChange("lamb", e.target.value)}
+                    style={{ width: "42px", padding: "2px 0", textAlign: "center", border: "1px solid #cbd5e1", borderRadius: "4px", fontSize: "11px" }}
                   />
                   <span>%</span>
                 </div>
