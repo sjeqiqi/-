@@ -173,7 +173,7 @@ def run_desktop(host: str = "127.0.0.1", port: int = 28350, force_browser: bool 
             import webview
 
             window = webview.create_window(
-                title="奶山羊智能日粮配比助手 (独立桌面版)",
+                title="牧语算草 (独立桌面版)",
                 url=base_url,
                 width=1280,
                 height=850,

@@ -57,6 +57,6 @@ EPS_DM_KG = 1e-9
 EPS_ME_MJ = 1e-9
 
 # ---- API / 产品元数据 ----
-API_TITLE = "奶山羊常用原料日粮配比助手"
+API_TITLE = "牧语算草"
 SERVICE_NAME = "dairy-goat-ration-mvp"
 VERSION = "0.1.0"

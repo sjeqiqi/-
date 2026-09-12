@@ -465,7 +465,7 @@ describe("App 三步流程", () => {
     vi.stubGlobal("fetch", mockFetch(() => CATALOG));
     render(<App />);
     expect(screen.getByText("下载安卓版 App")).toBeInTheDocument();
-    expect(screen.getByText(/点击下载奶山羊日粮配比助手安卓手机版/)).toBeInTheDocument();
+    expect(screen.getByText(/点击下载牧语算草安卓手机版/)).toBeInTheDocument();
   });
 
   it("进入 App 原生环境后自动隐藏所有下载按钮", () => {
@@ -473,7 +473,8 @@ describe("App 三步流程", () => {
     (window as any).isAndroidApp = true;
     render(<App />);
     expect(screen.queryByText("下载安卓版 App")).not.toBeInTheDocument();
-    expect(screen.queryByText(/点击下载奶山羊日粮配比助手安卓手机版/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/点击下载牧语算草安卓手机版/)).not.toBeInTheDocument();
     delete (window as any).isAndroidApp;
   });
+
 });

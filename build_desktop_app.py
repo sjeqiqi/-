@@ -18,8 +18,8 @@ ROOT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = ROOT_DIR.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
 BACKEND_DIR = ROOT_DIR / "backend"
-DIST_APP_DIR = PROJECT_ROOT / "奶山羊日粮配比助手_独立桌面版"
-ZIP_OUTPUT_PATH = PROJECT_ROOT / "奶山羊日粮配比助手_独立桌面版_v1.0.zip"
+DIST_APP_DIR = PROJECT_ROOT / "牧语算草_独立桌面版"
+ZIP_OUTPUT_PATH = PROJECT_ROOT / "牧语算草_独立桌面版_v1.0.zip"
 
 
 def step_build_frontend():
@@ -196,7 +196,7 @@ def step_create_zip():
         for root, dirs, files in os.walk(DIST_APP_DIR):
             for file in files:
                 file_path = Path(root) / file
-                arc_name = Path("奶山羊日粮配比助手_独立桌面版") / file_path.relative_to(DIST_APP_DIR)
+                arc_name = Path("牧语算草_独立桌面版") / file_path.relative_to(DIST_APP_DIR)
                 zf.write(file_path, arc_name)
 
     zip_size_mb = ZIP_OUTPUT_PATH.stat().st_size / (1024 * 1024)

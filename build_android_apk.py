@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-奶山羊日粮配比助手 - Android APK 一键构建与打包脚本
+牧语算草 - Android APK 一键构建与打包脚本
 功能：
 1. 编译前端生产静态资源 (npm run build)
 2. 同步静态资源至 Android assets 目录
@@ -29,9 +29,10 @@ ASSETS_DIST_DIR = ANDROID_DIR / "app" / "src" / "main" / "assets" / "dist"
 RELEASE_APK_SRC = ANDROID_DIR / "app" / "build" / "outputs" / "apk" / "release" / "app-release.apk"
 
 PROJECT_ROOT = ROOT_DIR.parent
-OUTPUT_DIR = PROJECT_ROOT / "奶山羊日粮配比助手_安卓版"
-OUTPUT_APK_ROOT = PROJECT_ROOT / "奶山羊日粮配比助手_Android_v1.0.apk"
-OUTPUT_APK_FOLDER = OUTPUT_DIR / "奶山羊日粮配比助手_v1.0.apk"
+OUTPUT_DIR = PROJECT_ROOT / "牧语算草_安卓版"
+OUTPUT_APK_ROOT = PROJECT_ROOT / "牧语算草_Android_v1.0.apk"
+OUTPUT_APK_FOLDER = OUTPUT_DIR / "牧语算草_v1.0.apk"
+PUBLIC_APK_DEST = FRONTEND_DIR / "public" / "牧语算草_Android_v1.0.apk"
 
 
 def log(msg):
@@ -118,23 +119,25 @@ def sync_assets():
         shutil.rmtree(assets_root)
     assets_root.mkdir(parents=True, exist_ok=True)
 
-    # 1. 注入 assets/ 根目录
+    # 1. 注入 assets/ 根目录（排除 APK 安装包文件，避免把安装包打包进自身）
     for item in frontend_dist.iterdir():
+        if item.suffix.lower() == ".apk":
+            continue
         dest = assets_root / item.name
         if item.is_dir():
             if dest.exists():
                 shutil.rmtree(dest)
-            shutil.copytree(item, dest)
+            shutil.copytree(item, dest, ignore=shutil.ignore_patterns("*.apk"))
         else:
             shutil.copyfile(item, dest)
 
-    # 2. 同时保留 assets/dist/ 以保证历史兼容性
+    # 2. 同时保留 assets/dist/ 以保证历史兼容性（同样排除 APK）
     if ASSETS_DIST_DIR.exists():
         shutil.rmtree(ASSETS_DIST_DIR)
-    shutil.copytree(frontend_dist, ASSETS_DIST_DIR)
+    shutil.copytree(frontend_dist, ASSETS_DIST_DIR, ignore=shutil.ignore_patterns("*.apk"))
 
     file_count = sum(len(files) for _, _, files in os.walk(assets_root))
-    log(f"静态资源同步完成，共注入 {file_count} 个文件至 Android assets 目录")
+    log(f"静态资源同步完成（已自动排除外部 APK），共注入 {file_count} 个核心文件至 Android assets 目录")
 
 
 def build_apk():
@@ -160,6 +163,8 @@ def deploy_apk():
 
     shutil.copyfile(RELEASE_APK_SRC, OUTPUT_APK_ROOT)
     shutil.copyfile(RELEASE_APK_SRC, OUTPUT_APK_FOLDER)
+    if PUBLIC_APK_DEST.parent.exists():
+        shutil.copyfile(RELEASE_APK_SRC, PUBLIC_APK_DEST)
 
     size_bytes = OUTPUT_APK_ROOT.stat().st_size
     size_mb = size_bytes / (1024 * 1024)
@@ -173,6 +178,7 @@ def deploy_apk():
     log(f"SHA-256 校验码: {sha256}")
     log(f"发布路径 1: {OUTPUT_APK_ROOT}")
     log(f"发布路径 2: {OUTPUT_APK_FOLDER}")
+    log(f"发布路径 3: {PUBLIC_APK_DEST}")
     log("=" * 60)
 
 

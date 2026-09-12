@@ -110,24 +110,25 @@ export default function App() {
     <div className={`app ${isApp ? "in-app-env" : ""}`}>
       <header className="app-header">
         <div className={`app-top-bar ${isApp ? "no-download" : ""}`}>
-          <span className="app-top-badge">🌾 奶山羊常用原料智能日粮配比系统</span>
+          <span className="app-top-badge">🌾 牧语算草 · 智能日粮配比系统</span>
           {!isApp && (
             <a
-              href="/奶山羊日粮配比助手_Android_v1.0.apk"
-              download="奶山羊日粮配比助手_Android_v1.0.apk"
+              href="/牧语算草_Android_v1.0.apk"
+              download="牧语算草_Android_v1.0.apk"
               className="app-download-btn"
-              title="点击下载奶山羊日粮配比助手安卓安装包 (APK)"
+              title="点击下载牧语算草安卓安装包 (APK)"
             >
               <span className="app-download-icon">📱</span>
               <span>下载安卓版 App</span>
-              <span className="app-download-badge">v1.0 · 2.3MB</span>
+              <span className="app-download-badge">v1.0 · 2.4MB</span>
             </a>
           )}
         </div>
 
-        <h1>奶山羊常用原料日粮配比助手</h1>
+        <h1>牧语算草</h1>
         <p className="hero-title">输入羊只情况、原料和价格，自动计算推荐配方</p>
         <p className="subtitle">帮你快速得到每日喂多少、营养是否达标、一天花多少钱</p>
+
 
         {step === 1 && (
           <div className="entry-modes" aria-label="配方模式入口">
@@ -193,12 +194,13 @@ export default function App() {
           <div className="footer-download-bar">
             <span>📲 支持离线手机端使用：</span>
             <a
-              href="/奶山羊日粮配比助手_Android_v1.0.apk"
-              download="奶山羊日粮配比助手_Android_v1.0.apk"
+              href="/牧语算草_Android_v1.0.apk"
+              download="牧语算草_Android_v1.0.apk"
               className="footer-download-link"
             >
-              点击下载奶山羊日粮配比助手安卓手机版 (v1.0.0 APK, 2.3MB)
+              点击下载牧语算草安卓手机版 (v1.0.0 APK, 2.4MB)
             </a>
+
           </div>
         )}
         <div className="footer-disclaimer">

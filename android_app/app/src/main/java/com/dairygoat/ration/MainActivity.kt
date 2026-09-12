@@ -169,7 +169,7 @@ class MainActivity : ComponentActivity() {
                             <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
                             <body style="font-family:sans-serif;padding:32px 20px;text-align:center;color:#333;">
                                 <div style="font-size:48px;margin-bottom:16px;">🐐</div>
-                                <h3 style="color:#1f6f43;">奶山羊日粮配比助手</h3>
+                                <h3 style="color:#1f6f43;">牧语算草</h3>
                                 <p style="color:#666;font-size:14px;margin:12px 0 24px;">页面加载遇到异常，请点击重试：<br><small style="color:#999;">${error?.description}</small></p>
                                 <button onclick="location.reload()" style="background:#1f6f43;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:15px;">重新加载</button>
                             </body>
