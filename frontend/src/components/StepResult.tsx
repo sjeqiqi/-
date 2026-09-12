@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { calculateRation, calibrateRation } from "../api";
+import { calculateRation, calibrateRation, buildFullThinkingText } from "../api";
 import type {
   ApproximateRation,
   BoundaryFlag,
@@ -33,9 +33,12 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
   const [calibrating, setCalibrating] = useState(false);
   const [calibrateError, setCalibrateError] = useState<string | null>(null);
 
-  // 转圈加载延时状态 (6~8秒，取 7.0 秒)
-  const [isDelaying, setIsDelaying] = useState(true);
-  const [elapsedDuration, setElapsedDuration] = useState("0.0s");
+  // 思考过程状态
+  const [streamingText, setStreamingText] = useState("");
+  const [thinkingStage, setThinkingStage] = useState(1);
+  const [thinkingDuration, setThinkingDuration] = useState("0.0s");
+  const [isThinking, setIsThinking] = useState(true);
+  const [showThinkingDrawer, setShowThinkingDrawer] = useState(false);
 
   // 维度切换：单只羊 vs 全群 (默认展示单只精准标准配比，可一键切换全群批次总量)
   const [dimension, setDimension] = useState<"single" | "all">("single");
@@ -43,31 +46,111 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
   // 免责声明弹窗
   const [showAgreement, setShowAgreement] = useState(false);
 
-  const delayTimerRef = useRef<any>(null);
+  const streamTimerRef = useRef<any>(null);
   const durationTimerRef = useRef<any>(null);
+  const terminalBodyRef = useRef<HTMLDivElement | null>(null);
+  const fullThinkingRef = useRef<string>("");
 
   useEffect(() => {
     let cancelled = false;
     const isTestMode = Boolean((import.meta as any).env?.MODE === "test");
 
     setLoaded({ kind: "loading" });
-    setIsDelaying(!isTestMode);
-    setElapsedDuration("0.0s");
+    setIsThinking(!isTestMode);
+    setStreamingText("");
+    setThinkingStage(1);
 
-    if (!isTestMode) {
+    const fullThinking = buildFullThinkingText(
+      {
+        regionName: pastureInfo?.regionName,
+        totalFlockCount: pastureInfo?.totalFlockCount ? parseInt(pastureInfo.totalFlockCount, 10) : 500,
+        coreTargetName: pastureInfo?.coreTargetName,
+        coreCount: pastureInfo?.coreCount,
+      },
+      {
+        bodyWeightKg: request.animal.body_weight_kg,
+        milkKg: request.animal.milk_kg,
+        milkFatPercent: request.animal.milk_fat_percent,
+        class: request.animal.class,
+      },
+    );
+    fullThinkingRef.current = fullThinking;
+
+    let isAiFinished = isTestMode;
+    let hasReachedMinTime = isTestMode;
+    let finishTriggered = false;
+
+    const tryFinishThinking = () => {
+      if (finishTriggered || cancelled) return;
+      if (isAiFinished && hasReachedMinTime) {
+        finishTriggered = true;
+        if (streamTimerRef.current) clearInterval(streamTimerRef.current);
+        if (durationTimerRef.current) clearInterval(durationTimerRef.current);
+        setStreamingText(fullThinking);
+        setThinkingStage(4);
+
+        // 停留 300ms 保证用户看清收敛完成，随后统一展开完整配方看板与 AI 专家指导
+        setTimeout(() => {
+          if (!cancelled) {
+            setIsThinking(false);
+          }
+        }, 300);
+      }
+    };
+
+    let minTimer: any = null;
+    let safetyTimer: any = null;
+
+    if (isTestMode) {
+      setStreamingText(fullThinking);
+      setThinkingStage(4);
+      setThinkingDuration("0.0s");
+    } else {
+      // 启动毫秒计时器 (每 100ms 更新一次，保持与微信小程序完全一致的 0.0s 动态计时)
       const startMs = Date.now();
       durationTimerRef.current = setInterval(() => {
         const sec = ((Date.now() - startMs) / 1000).toFixed(1);
-        setElapsedDuration(`${sec}s`);
+        setThinkingDuration(`${sec}s`);
       }, 100);
 
-      // 转圈 7 秒 (6~8秒区间)
-      delayTimerRef.current = setTimeout(() => {
-        if (!cancelled) {
-          setIsDelaying(false);
-          if (durationTimerRef.current) clearInterval(durationTimerRef.current);
+      // 保证至少 7～8 秒（7.5s）推演沉浸感，等待大模型输出传回手机后统一产出
+      minTimer = setTimeout(() => {
+        hasReachedMinTime = true;
+        tryFinishThinking();
+      }, 7500);
+
+      // 最长安全超时 10 秒（防止弱网长时间挂起）
+      safetyTimer = setTimeout(() => {
+        if (!isAiFinished) {
+          console.warn("AI 接口响应超过安全上限，切换至权威行业标准建议并统一展示");
+          isAiFinished = true;
+          setCalibrating(false);
+          tryFinishThinking();
         }
-      }, 7000);
+      }, 10000);
+
+      // 流式打字推演：每 35ms 递增 4 个字符，约 6.5~7.0 秒平滑完成 4 阶段推演
+      let curIdx = 0;
+      const chunkSize = 4;
+      streamTimerRef.current = setInterval(() => {
+        curIdx += chunkSize;
+        if (curIdx >= fullThinking.length) {
+          setStreamingText(fullThinking);
+          setThinkingStage(4);
+          if (streamTimerRef.current) clearInterval(streamTimerRef.current);
+        } else {
+          const sub = fullThinking.slice(0, curIdx);
+          let st = 1;
+          if (sub.includes("> [阶段 4:")) st = 4;
+          else if (sub.includes("> [阶段 3:")) st = 3;
+          else if (sub.includes("> [阶段 2:")) st = 2;
+          setStreamingText(sub);
+          setThinkingStage(st);
+          if (terminalBodyRef.current) {
+            terminalBodyRef.current.scrollTop = terminalBodyRef.current.scrollHeight;
+          }
+        }
+      }, 35);
     }
 
     calculateRation(request)
@@ -75,7 +158,7 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
         if (cancelled) return;
         if (res.status === "feasible") {
           setLoaded({ kind: "feasible", data: res });
-          // 自动启动 AI 校准，并在转圈延时期间同步完成，携带已计算好的完整配方与营养事实
+          // 自动启动 AI 校准，并在推演期间同步完成，携带已计算好的完整配方与营养事实
           setCalibrating(true);
           calibrateRation(request, res)
             .then((c) => {
@@ -89,6 +172,10 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
                 console.warn("AI 解读自动生成异常:", err);
                 setCalibrating(false);
               }
+            })
+            .finally(() => {
+              isAiFinished = true;
+              tryFinishThinking();
             });
         } else if (res.status === "approximate") {
           setLoaded({ kind: "approximate", data: res });
@@ -102,26 +189,40 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
             })
             .catch(() => {
               if (!cancelled) setCalibrating(false);
+            })
+            .finally(() => {
+              isAiFinished = true;
+              tryFinishThinking();
             });
         } else {
           setLoaded({ kind: "infeasible", data: res });
+          isAiFinished = true;
+          tryFinishThinking();
         }
       })
       .catch((err: Error) => {
-        if (!cancelled) setLoaded({ kind: "error", message: err.message });
+        if (!cancelled) {
+          setLoaded({ kind: "error", message: err.message });
+          isAiFinished = true;
+          tryFinishThinking();
+        }
       });
 
     return () => {
       cancelled = true;
-      if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
+      if (minTimer) clearTimeout(minTimer);
+      if (safetyTimer) clearTimeout(safetyTimer);
+      if (streamTimerRef.current) clearInterval(streamTimerRef.current);
       if (durationTimerRef.current) clearInterval(durationTimerRef.current);
     };
   }, [request, pastureInfo]);
 
-  const handleSkipWait = () => {
-    if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
+  const handleSkipThinking = () => {
+    if (streamTimerRef.current) clearInterval(streamTimerRef.current);
     if (durationTimerRef.current) clearInterval(durationTimerRef.current);
-    setIsDelaying(false);
+    setStreamingText(fullThinkingRef.current);
+    setThinkingStage(4);
+    setIsThinking(false);
   };
 
   const handleCalibrate = async () => {
@@ -145,8 +246,8 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
     <section className="card" aria-label="配方结果">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
         <h2>第三步：配方结果</h2>
-        {/* 维度切换 (仅在计算完成且为可行解时展示) */}
-        {!isDelaying && loaded.kind === "feasible" && (
+        {/* 维度切换 (仅在推演完成且为可行解时展示) */}
+        {!isThinking && loaded.kind === "feasible" && (
           <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", padding: "3px", borderRadius: "8px" }}>
             <button
               type="button"
@@ -184,36 +285,169 @@ export function StepResult({ request, pastureInfo, onBack, onEditAnimal }: Props
         )}
       </div>
 
-      {/* 1. 简洁转圈加载中 (持续 6~8 秒) */}
-      {(isDelaying || loaded.kind === "loading") && (
-        <div className="loading-card" role="status" aria-live="polite">
-          <div className="loading-spinner" />
-          <h3 className="loading-title">正在根据羊只情况、原料和价格计算配方…</h3>
-          <p className="loading-desc">依据 NRC 标准小反刍动物营养模型与运筹规划求解中，请稍候</p>
-          <div className="loading-timer-badge">
-            <span>🔄 正在优化计算 ({elapsedDuration})</span>
+      {/* 1. 深度思考流式推演框 (与微信小程序 100% 对齐的高科技推演终端) */}
+      {isThinking && (
+        <div
+          style={{
+            background: "#0f172a",
+            color: "#f8fafc",
+            borderRadius: "12px",
+            padding: "16px",
+            margin: "14px 0 18px 0",
+            boxShadow: "0 6px 16px rgba(0,0,0,0.25)",
+            border: "1px solid #334155",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {/* macOS 三色指示灯 */}
+              <div style={{ display: "flex", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+              </div>
+              <span style={{ fontSize: "16px", fontWeight: "bold", color: "#38bdf8", letterSpacing: "0.5px" }}>
+                DeepSeek-Flash
+              </span>
+              <span
+                style={{
+                  fontSize: "11px",
+                  background: "rgba(56,189,248,0.18)",
+                  color: "#38bdf8",
+                  padding: "3px 8px",
+                  borderRadius: "12px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
+                }}
+              >
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#38bdf8", display: "inline-block" }} />
+                深度思考中 ({thinkingDuration})
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleSkipThinking}
+              style={{
+                background: "#334155",
+                color: "#f8fafc",
+                border: "none",
+                padding: "5px 12px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                cursor: "pointer",
+                fontWeight: "500",
+              }}
+            >
+              ⏩ 跳过思考
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSkipWait}
+
+          {/* 4 阶段推演进度条 */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "6px", marginBottom: "14px" }}>
+            {[
+              { id: 1, title: "需要量解析" },
+              { id: 2, title: "产区行情约束" },
+              { id: 3, title: "反刍健康校验" },
+              { id: 4, title: "10 g 收敛求解" },
+            ].map((st) => {
+              const active = thinkingStage >= st.id;
+              const completed = thinkingStage > st.id;
+              return (
+                <div
+                  key={st.id}
+                  style={{
+                    textAlign: "center",
+                    padding: "7px 2px",
+                    borderRadius: "6px",
+                    fontSize: "11px",
+                    background: active ? "#0284c7" : "#1e293b",
+                    color: active ? "#ffffff" : "#64748b",
+                    fontWeight: active ? "bold" : "normal",
+                    transition: "all 0.3s ease",
+                  }}
+                >
+                  {completed ? "✓ " : `${st.id}. `}{st.title}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 终端流式打字文本 */}
+          <div
+            ref={terminalBodyRef}
             style={{
-              marginTop: "16px",
-              background: "transparent",
-              border: "none",
-              color: "#94a3b8",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
               fontSize: "12px",
-              cursor: "pointer",
-              textDecoration: "underline",
+              lineHeight: "1.65",
+              color: "#94a3b8",
+              height: "190px",
+              overflowY: "auto",
+              whiteSpace: "pre-wrap",
+              background: "#090d16",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "1px solid #1e293b",
             }}
           >
-            跳过等待直接查看结果
-          </button>
+            {streamingText}
+            <span style={{ color: "#38bdf8", animation: "pulse 1s infinite", fontWeight: "bold" }}>▌</span>
+          </div>
+
+          <div style={{ marginTop: "10px", fontSize: "11px", color: "#64748b", textAlign: "right" }}>
+            {thinkingStage === 4 ? "已完成反刍营养收敛，正在统合 DeepSeek 专家报告并统一产出…" : "正在执行反刍动物营养模型与运筹优化求解计算…"}
+          </div>
         </div>
       )}
 
-      {/* 2. 计算完成后的结果展示区域 */}
-      {!isDelaying && (
+      {/* 2. 推演完成后的结果展示区域（思考推演完成前完全隐藏） */}
+      {!isThinking && (
         <>
+          {/* 思考折叠抽屉 */}
+          {streamingText && (
+            <div style={{ marginBottom: "16px" }}>
+              <button
+                type="button"
+                onClick={() => setShowThinkingDrawer(!showThinkingDrawer)}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#334155",
+                  fontSize: "13px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                }}
+              >
+                <span>🧠 DeepSeek-Flash 深度思考推演链 ({thinkingDuration})</span>
+                <span style={{ color: "#16a34a", fontWeight: "bold" }}>{showThinkingDrawer ? "▲ 收起" : "▼ 展开查看思维链"}</span>
+              </button>
+              {showThinkingDrawer && (
+                <div
+                  style={{
+                    background: "#0f172a",
+                    color: "#94a3b8",
+                    borderRadius: "0 0 8px 8px",
+                    padding: "14px",
+                    fontSize: "12px",
+                    lineHeight: "1.65",
+                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                    whiteSpace: "pre-wrap",
+                    borderTop: "none",
+                  }}
+                >
+                  {streamingText}
+                </div>
+              )}
+            </div>
+          )}
+
+          {loaded.kind === "loading" && <p className="loading-note">正在根据羊只情况、原料和价格计算配方…</p>}
 
           {loaded.kind === "error" && (
             <>

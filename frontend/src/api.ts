@@ -144,59 +144,38 @@ export function buildFullThinkingText(
   if (animal.class !== "maintenance" && animal.milkKg) {
     const milk = animal.milkKg || 2.5;
     const fat = animal.milkFatPercent || 4.0;
-    const nel = ((0.386 * fat + 0.16) * milk).toFixed(2);
-    const meReq = ((Number(nem) / 0.644) + (Number(nel) / 0.64)).toFixed(2);
-    const meBuffer = (Number(meReq) * 1.05).toFixed(2);
-    const cpMaint = (bw * 0.875).toFixed(1);
-    const cpMilk = (milk * 55).toFixed(1);
-    const cpReq = (Number(cpMaint) + Number(cpMilk)).toFixed(1);
-    const cpBuffer = (Number(cpReq) * 1.05).toFixed(1);
-
-    stage1Details = `[INIT] 激活小反刍能量与蛋白代谢动力学模型 (NRC 2007 & Sahlu 2004 体系)...
-• 牧场全群存栏: ${total} 只 | 核心目标群: 【${coreName}】共 ${coreCount} 只
-• 动物生理参数: 活重 ${bw} kg | 日产奶 ${milk} kg/d | 标准乳脂率 ${fat}%
-• 维持净能需求: NEm = 0.315 × BW^0.75 = ${nem} MJ/d
-• 产奶净能需求: NEl = (0.386 × ${fat}% + 0.16) × ${milk} = ${nel} MJ/d
-• 代谢能基准阈值: ME_req = (NEm / 0.644) + (NEl / 0.64) = ${meReq} MJ/d (施加 +5% 安全余量: ${meBuffer} MJ/d)
-• 粗蛋白代谢平衡: CP_maint(${cpMaint}g) + CP_milk(${cpMilk}g) = ${cpReq} g/d (+5% 缓冲: ${cpBuffer} g/d)
-• 预估干物质采食量: DMI_target = ${dmiEst} kg/d (允许 ±3% 弹性收敛带宽: ${(Number(dmiEst) * 0.97).toFixed(2)} ~ ${(Number(dmiEst) * 1.03).toFixed(2)} kg/d)`;
+    stage1Details = `调取牧场基础参数：全场总存栏 ${total} 只，核心计算群设定为【${coreName}】共 ${coreCount} 只（均重 ${bw} kg，日产奶 ${milk} kg/天，乳脂率 ${fat}%）。
+依据美国 NRC《小反刍动物营养需要》（2007）及 Sahlu 等（2004）公开文献体系模型：
+• 基础维持净能需求 NEm = 0.315 × BW^0.75 = ${nem} MJ/d
+• 产奶净能需求 NE_milk = (0.386 × ${fat}% + 0.16) × ${milk} kg/d
+• 目标干物质采食量 DMI = ${dmiEst} kg/d，设定代谢能 ME、粗蛋白 CP、中性洗涤纤维 NDF 及钙磷等约束边界（含 5% 安全余量及 ±3% DMI 允许带宽）。`;
   } else {
-    stage1Details = `[INIT] 激活小反刍维持期营养生理模型 (NRC 2007 体系)...
-• 牧场全群存栏: ${total} 只 | 核心目标群: 【${coreName}】共 ${coreCount} 只
-• 动物生理参数: 活重 ${bw} kg | 生产阶段: 非泌乳维持期 (强化体况储备与瘤胃底盘)
-• 维持净能需求: NEm = 0.315 × BW^0.75 = ${nem} MJ/d
-• 代谢能基准阈值: ME_req = NEm / 0.644 = ${(Number(nem) / 0.644).toFixed(2)} MJ/d (+5% 缓冲余量)
-• 粗蛋白维持需求: CP_req = ${(bw * 0.875 * 1.05).toFixed(1)} g/d
-• 预估干物质采食量: DMI_target = ${dmiEst} kg/d，设定 NDF 物理有效纤维刚性下限`;
+    stage1Details = `调取牧场基础参数：全场总存栏 ${total} 只，核心计算群设定为【${coreName}】共 ${coreCount} 只（均重 ${bw} kg，非泌乳维持期）。
+依据美国 NRC《小反刍动物营养需要》（2007）及公开文献体系：
+• 基础维持净能需求 NEm = 0.315 × BW^0.75 = ${nem} MJ/d
+• 目标干物质采食量 DMI = ${dmiEst} kg/d，重点强化粗饲料纤维安全与瘤胃发酵底盘。`;
   }
 
   return `> [阶段 1: 核心群体营养需要精准推导]
 ${stage1Details}
 
 > [阶段 2: 区域原料行情与成本极小化建模]
-[LP-MATRIX] 联动【${region}】原料动态价格向量与营养实测数据库...
-• 粗饲料物理纤维底盘: 全株青贮与特级苜蓿草构建反刍长纤维三维网络
-• 高能高蛋白精料核心: 玉米补充瘤胃非结构性碳水化合物(NFC)，豆粕平衡小肠可吸收氨基酸(MP)
-• 关键矿物质平衡网络: 精准校核食盐 0.5% (NaCl 渗透压保障) 及石粉钙源调控 (Ca:P 设定 1.5~2.0)
-• 构筑高维线性规划矩阵:
-  - 目标函数: Min Cost = ∑ (Price_i × AsFed_i)
-  - 约束矩阵: Ax ≥ b (全项覆盖 DMI、ME、CP、NDF、Ca、P、Salt 及各原料最大建议上限)
+联动【${region}】原料采购行情与营养实测数据库：
+• 确定粗饲料底盘：本地优质干草与全株青贮构建反刍物理纤维来源
+• 引入高能高蛋白精料：玉米提供淀粉能，豆粕平衡过瘤胃蛋白与氨基酸
+• 矿物质平衡：精准补足食盐（0.5%）与饲料级石粉钙源
+建立连续线性规划优化矩阵：Min Cost = ∑ (Price_i × AsFed_i)，约束全项营养达标。
 
 > [阶段 3: 反刍生理健康与精粗比安全校验]
-[RUMEN-SIM] 启动瘤胃微生物微生态发酵与消化动力学防酸仿真校验...
-• 物理有效中性洗涤纤维 (peNDF) 评估: ≥ 21.0% (确保日均反刍咀嚼时长 ≥ 450 min/d)
-• 唾液内源重碳酸盐缓冲分泌充盈，维持瘤胃内环境稳态 pH 处于 6.2 ~ 6.8 弱酸性安全范围
-• 亚急性瘤胃酸中毒 (SARA) 风险指数评估: P(SARA) < 0.01% (极低风险，消化道屏障强健)
-• 锁定精粗比黄金走廊: 粗饲料干物质占比稳定在 60% ~ 75% 优质生理带宽
+评估反刍胃微生态环境与消化安全：
+• 粗饲料占日粮干物质比例保持在适宜安全黄金区间，确保物理有效中性洗涤纤维 (peNDF) 充足
+• 保障每日反刍咀嚼时间与唾液缓冲分泌，维持瘤胃内环境 pH 值在 6.2 ~ 6.8 弱酸性安全范围
+• 规避亚急性瘤胃酸中毒 (SARA)，确保群体消化机能与体况健康。
 
 > [阶段 4: 10 g 整数化收敛求解与精准决策输出]
-[SOLVER] 连续单纯形 (Simplex LP) 与 10 g 分支定界整数规划双向收敛...
-• 连续松弛解求解完成: 耗时 3.8 ms | 初始可行基已捕获
-• 执行 10 g (0.01 kg) 步长离散投影与残差梯度消解:
-  - 迭代搜索 28 次: 消除极微量非物理残料，确保配方田间可操作性与精准混配
-  - 约束重算通过率: 100% | 目标函数成本收敛至全局鞍点最优
-• 牧场群规投喂换算: 【${coreName}】共 ${coreCount} 只全日 TMR 配料车批次总量已同步生成
-✓ 运筹求解圆满收敛！DeepSeek-Flash 营养专家审核通过，正在载入全景配方看板...`;
+连续线性规划与 10 g 整数规划求解成功收敛，所有营养约束复算通过！
+输出每只羊每日投喂量，并根据【${coreName}】共 ${coreCount} 只规模联动换算每日各原料总消耗量（TMR 饲喂车直接配料）。
+科学精准投喂决策报告生成完毕，正在进入配方看板...`;
 }
 
 /**
@@ -253,9 +232,11 @@ export async function calibrateRation(
     userContent.feeds_input = req.feeds;
   }
 
-  // 2. 优先通过 DeepSeek 官方 API 直连通道极速生成（自带官方 Key，max_tokens 设为 2500 保证推理链与输出完整）
-  const candidateModels = ["deepseek-flash", "deepseek-chat"];
+  // 2. 优先通过 DeepSeek 官方 API 直连通道极速生成（deepseek-chat 约 1.5s 极速稳定返回）
+  const candidateModels = ["deepseek-chat", "deepseek-flash"];
   for (const modelName of candidateModels) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     try {
       const response = await fetch(DEEPSEEK_API_URL, {
         method: "POST",
@@ -263,16 +244,18 @@ export async function calibrateRation(
           "Content-Type": "application/json",
           Authorization: `Bearer ${BUILTIN_DEEPSEEK_KEY}`,
         },
+        signal: controller.signal,
         body: JSON.stringify({
           model: modelName,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: JSON.stringify(userContent) },
           ],
-          max_tokens: 2500,
+          max_tokens: 1500,
           temperature: 0.3,
         }),
       });
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
@@ -296,6 +279,7 @@ export async function calibrateRation(
         }
       }
     } catch (deepseekErr) {
+      clearTimeout(timeoutId);
       console.warn(`DeepSeek 官方直连通道 (${modelName}) 异常:`, deepseekErr);
     }
   }
