@@ -113,12 +113,14 @@ describe("系统全面鲁棒性与高压压力测试 (Full System Robustness & S
       };
       const res = calculateRationLocal(req);
       expect(res.status).toBe("approximate");
+
       if (res.status === "approximate") {
         expect(res.qualified).toBe(false);
         expect(res.violations.length).toBeGreaterThan(0);
         expect(res.violations.some((v) => v.code === "salt")).toBe(true);
       }
     });
+
 
     it("极端情况 B：仅勾选 1 种精料（玉米），安全给出结构化诊断与缺口提示", () => {
       const req: CalculateRequest = {

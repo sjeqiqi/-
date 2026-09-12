@@ -3,6 +3,8 @@ import type { CalculatorFeedSpec } from "./feedsCatalog";
 import type { Requirements } from "./nutrition";
 import { solveLP } from "./simplex";
 import * as spec from "./spec";
+import solver from "javascript-lp-solver";
+
 
 export function roundHalfUp(value: number, digits = 2): number {
   const factor = Math.pow(10, digits);
@@ -369,6 +371,116 @@ export function buildAndSolve(
   return { feasible: true, x_dm: amounts, message: "ok" };
 }
 
+export function solveDiscrete(
+  feeds: Record<string, CalculatorFeedSpec>,
+  req: Requirements,
+  allowedIds: Set<string>,
+): Record<string, number> | null {
+  const candidate = Object.values(feeds).filter((feed) => allowedIds.has(feed.feed_id));
+  if (candidate.length === 0 || !candidate.some((feed) => feed.feed_id === "salt")) {
+    return null;
+  }
+
+  const step = spec.ROUND_STEP_KG; // 0.01 kg
+
+  const constraints: Record<string, { min?: number; max?: number }> = {};
+  const variables: Record<string, Record<string, number>> = {};
+  const ints: Record<string, 1> = {};
+
+  constraints["dmi"] = { min: req.dmi_min_kg, max: req.dmi_max_kg };
+  constraints["me"] = { min: req.me_requirement_mj };
+  constraints["cp_min"] = { min: 0 };
+  constraints["cp_max"] = { max: 0 };
+  constraints["ndf_min"] = { min: 0 };
+  constraints["ndf_max"] = { max: 0 };
+  constraints["forage"] = { min: 0 };
+  constraints["ca_min"] = { min: 0 };
+  constraints["p_min"] = { min: 0 };
+  constraints["ca_p_min"] = { min: 0 };
+  constraints["ca_p_max"] = { max: 0 };
+
+  const saltTol = spec.SALT_TOLERANCE_KG - 1e-9;
+  constraints["salt_diff"] = { min: -saltTol, max: saltTol };
+
+  for (let i = 0; i < candidate.length; i++) {
+    constraints[`feed_cap_${candidate[i].feed_id}`] = { max: 0 };
+  }
+
+  const allZeroPrice = candidate.every((f) => (f.default_price_rmb_per_kg ?? 0) <= 0);
+
+  for (let i = 0; i < candidate.length; i++) {
+    const f = candidate[i];
+    const fid = f.feed_id;
+    const dm = step * f.dm_fraction;
+    const price = allZeroPrice
+      ? ((DEFAULT_PRICE_WEIGHTS[fid] ?? (f.is_forage ? 1.5 : 3.0)) / f.dm_fraction) * 1e-4 * step
+      : step * (f.default_price_rmb_per_kg ?? 0);
+
+    const v: Record<string, number> = {
+      cost: price,
+      dmi: dm,
+      me: dm * f.me_mj_per_kg_dm,
+      cp_min: dm * (f.cp_pct_dm - req.cp_min_pct),
+      cp_max: dm * (f.cp_pct_dm - req.cp_max_pct),
+      ndf_min: dm * (f.ndf_pct_dm - req.ndf_min_pct),
+      ndf_max: dm * (f.ndf_pct_dm - req.ndf_max_pct),
+      forage: dm * ((f.is_forage ? 1.0 : 0.0) - req.forage_min_frac),
+      ca_min: dm * (f.ca_pct_dm - req.ca_min_pct),
+      p_min: dm * (f.p_pct_dm - req.p_min_pct),
+      ca_p_min: dm * (f.ca_pct_dm - spec.CAP_RATIO_MIN * f.p_pct_dm),
+      ca_p_max: dm * (f.ca_pct_dm - spec.CAP_RATIO_MAX * f.p_pct_dm),
+      salt_diff: dm * ((fid === "salt" ? 1.0 : 0.0) - spec.SALT_FRACTION),
+    };
+
+    for (let k = 0; k < candidate.length; k++) {
+      const cap_k = candidate[k].max_usage_pct_dm / 100.0;
+      if (k === i) {
+        v[`feed_cap_${candidate[k].feed_id}`] = dm * (1.0 - cap_k);
+      } else {
+        v[`feed_cap_${candidate[k].feed_id}`] = -cap_k * dm;
+      }
+    }
+
+    variables[fid] = v;
+    ints[fid] = 1;
+  }
+
+  const model = {
+    optimize: "cost",
+    opType: "min" as const,
+    constraints,
+    variables,
+    ints,
+    timeout: 500,
+    options: {
+      presolve: true,
+      useMIRCuts: true,
+      branching: "most-fractional" as const,
+      timeout: 500,
+    },
+  };
+
+
+  try {
+    const sol: any = solver.Solve(model);
+    if (!sol || !sol.feasible) return null;
+
+    const amounts: Record<string, number> = {};
+    for (const f of candidate) {
+      const units = sol[f.feed_id];
+      if (units && units > 0) {
+        const amount = roundHalfUp(Math.round(units) * step, 2);
+        if (amount > 0) {
+          amounts[f.feed_id] = amount;
+        }
+      }
+    }
+    return amounts;
+  } catch {
+    return null;
+  }
+}
+
 function syncSalt(
   feeds: Record<string, CalculatorFeedSpec>,
   amounts: Record<string, number>,
@@ -389,6 +501,7 @@ function syncSalt(
   return out;
 }
 
+
 function violationScore(ev: ReturnType<typeof evaluateRation>): number {
   return ev.violations.reduce((sum, v) => sum + Math.max(0, v.severity ?? 1.0), 0.0);
 }
@@ -399,19 +512,31 @@ export function roundAndRepair(
   req: Requirements,
   allowedIds: Set<string>,
 ): [Record<string, number>, ReturnType<typeof evaluateRation>] {
+  const allowed = allowedIds;
+  const discreteAmounts = solveDiscrete(feeds, req, allowed);
+  if (discreteAmounts !== null) {
+    const discreteEv = evaluateRation(feeds, discreteAmounts, req);
+    if (discreteEv.violations.length === 0) {
+      return [discreteAmounts, discreteEv];
+    }
+  }
+
+  // 极少数整数求解器异常时保留原有确定性小步修正作为降级路径。
   let amounts: Record<string, number> = {};
   for (const [fid, dm] of Object.entries(xDm)) {
-    if (allowedIds.has(fid) && feeds[fid]) {
+    if (allowed.has(fid) && feeds[fid]) {
       amounts[fid] = roundHalfUp(dm / feeds[fid].dm_fraction, 2);
     }
   }
   amounts = syncSalt(feeds, amounts);
-  const order = Array.from(allowedIds).filter((id) => id in feeds);
+  const order = Array.from(allowed).filter((id) => id in feeds);
+
 
   let ev = evaluateRation(feeds, amounts, req);
   if (ev.violations.length === 0) {
     return [amounts, ev];
   }
+
 
   for (let iter = 0; iter < spec.REPAIR_MAX_ITERATIONS; iter++) {
     ev = evaluateRation(feeds, amounts, req);
